@@ -9,7 +9,6 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { SearchBar } from "@/components/ui/search-bar";
-import { Toast } from "@/components/ui/toast";
 import { CardPlatillo } from "@/components/ui/menu/card-platillo";
 import { PlatillosSkeleton } from "@/components/ui/menu/platillos-skeleton";
 import { RangoPrecio } from "@/components/ui/menu/rango-precio";
@@ -22,7 +21,7 @@ import {
   type FiltrosMenu,
   type MenuRespuesta,
 } from "@/lib/menu";
-import { SUCURSALES_MOCK } from "@/lib/menu-mock";
+import { SUCURSALES } from "@/lib/sucursales";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -32,7 +31,7 @@ const fraunces = Fraunces({
 
 function sucursalDe(qs: string): number {
   const id = Number(new URLSearchParams(qs).get("sucursal"));
-  return SUCURSALES_MOCK.some((s) => s.id === id) ? id : SUCURSALES_MOCK[0].id;
+  return SUCURSALES.some((s) => s.id === id) ? id : SUCURSALES[0].id;
 }
 
 type Resultado = { clave: string; menu?: MenuRespuesta };
@@ -151,9 +150,6 @@ function Menu() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <Toast>
-        {listo && !listo.menu ? "No pudimos cargar el menú" : undefined}
-      </Toast>
 
       {/* Encabezado */}
       <header className="flex items-center justify-between gap-4 border-b border-zinc-700 pb-4">
@@ -162,10 +158,10 @@ function Menu() {
           <Dropdown
             id="sucursal"
             label="Sucursal"
-            labelClassName="hidden text-sm text-zinc-400 sm:block"
+            labelClassName="sr-only text-sm text-zinc-400 sm:not-sr-only"
             value={sucursalId}
             onChange={cambiarSucursal}
-            opciones={SUCURSALES_MOCK.map((s) => ({
+            opciones={SUCURSALES.map((s) => ({
               value: s.id,
               label: s.nombre,
             }))}
