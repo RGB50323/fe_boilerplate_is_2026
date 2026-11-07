@@ -11,6 +11,7 @@ import {
   formatoHora,
   horasDisponibles,
   validarFiltros,
+  type DatosReservacion,
   type ErroresDisponibilidad,
   type FiltrosDisponibilidad,
   type MesaDisponible,
@@ -30,10 +31,12 @@ export function DisponibilidadForm({
   sucursales,
   fechaInicial,
   horasIniciales,
+  onReservar,
 }: {
   sucursales: Sucursal[];
   fechaInicial: string;
   horasIniciales: string[];
+  onReservar?: (datos: DatosReservacion) => void;
 }) {
   const [filtros, setFiltros] = useState<FiltrosDisponibilidad>({
     sucursalId: String(sucursales[0].id),
@@ -48,7 +51,6 @@ export function DisponibilidadForm({
     estado: "inicial",
     mesas: [],
   });
-  const [seleccionada, setSeleccionada] = useState<number | null>(null);
   const solicitud = useRef(0);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,7 +71,6 @@ export function DisponibilidadForm({
         ?.horarios ?? [],
     );
     setErrores(erroresActuales);
-    setSeleccionada(null);
     if (Object.keys(erroresActuales).length) {
       setResultado({ estado: "inicial", mesas: [] });
       return;
@@ -83,7 +84,12 @@ export function DisponibilidadForm({
       const respuesta = await consultarDisponibilidad(datos);
       // Una búsqueda anterior nunca reemplaza los resultados de filtros nuevos.
       if (solicitud.current !== numeroSolicitud) return;
-      if (respuesta.errores || respuesta.error) {
+      if (respuesta.errores && Object.keys(respuesta.errores).length) {
+        setErrores(respuesta.errores);
+        setResultado({ estado: "inicial", mesas: [] });
+        return;
+      }
+      if (respuesta.error) {
         setErrores(respuesta.errores ?? {});
         setResultado({
           estado: "error",
@@ -122,16 +128,15 @@ export function DisponibilidadForm({
         siguientes.hora = nuevasHoras[0] ?? "";
     }
     setFiltros(siguientes);
-    setSeleccionada(null);
     solicitud.current += 1;
     if (temporizador.current) clearTimeout(temporizador.current);
-    if (!consultado) return;
     const nuevosErrores = validarFiltros(
       siguientes,
       sucursales.find((item) => String(item.id) === siguientes.sucursalId)
         ?.horarios ?? [],
     );
     setErrores(nuevosErrores);
+    if (!consultado) return;
     if (Object.keys(nuevosErrores).length) {
       setResultado({ estado: "inicial", mesas: [] });
       return;
@@ -153,16 +158,21 @@ export function DisponibilidadForm({
   const sucursal = sucursales.find(
     (item) => String(item.id) === consulta?.sucursalId,
   );
-  const mesaSeleccionada = resultado.mesas.find(
-    (mesa) => mesa.mesaId === seleccionada,
-  );
+  const filtrosInvalidos =
+    Object.keys(
+      validarFiltros(
+        filtros,
+        sucursales.find((item) => String(item.id) === filtros.sucursalId)
+          ?.horarios ?? [],
+      ),
+    ).length > 0;
 
   return (
     <>
       <form
         onSubmit={enviar}
         noValidate
-        aria-label="Consultar disponibilidad"
+        aria-label="Buscar mesas"
         className="rounded-2xl border border-white/5 bg-[#242427] p-5 sm:p-7"
       >
         <div className="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-[1.3fr_1.3fr_1fr_.7fr_auto]">
@@ -265,10 +275,10 @@ export function DisponibilidadForm({
           </div>
           <Button
             type="submit"
-            disabled={cargando}
+            disabled={cargando || filtrosInvalidos}
             className="min-w-36 sm:col-span-2 lg:col-span-1 lg:mt-7"
           >
-            {cargando ? "Consultando…" : "Consultar"}
+            {cargando ? "Buscando…" : "Buscar mesas"}
           </Button>
         </div>
         <div className="mt-4 flex flex-wrap justify-between gap-2 border-t border-white/5 pt-4 text-xs leading-relaxed text-zinc-400">
@@ -379,21 +389,29 @@ export function DisponibilidadForm({
               <MesaCard
                 key={mesa.mesaId}
                 mesa={mesa}
-                seleccionada={seleccionada === mesa.mesaId}
-                onSeleccionar={() => setSeleccionada(mesa.mesaId)}
+                onReservar={
+                  onReservar && consulta
+                    ? () =>
+                        onReservar({
+                          mesaId: mesa.mesaId,
+                          sucursalId: Number(consulta.sucursalId),
+                          fecha: consulta.fecha,
+                          hora: consulta.hora,
+                          personas: Number(consulta.personas),
+                        })
+                    : undefined
+                }
               />
             ))}
           </div>
         )}
-        {mesaSeleccionada && (
-          <p
-            role="status"
-            className="mt-6 rounded-xl border border-orange-900/60 bg-orange-950/20 p-4 text-center text-sm text-orange-200"
-          >
-            Seleccionaste la mesa {mesaSeleccionada.numero}. La selección
-            todavía no confirma una reservación.
-          </p>
-        )}
+        {resultado.estado === "listo" &&
+          resultado.mesas.length > 0 &&
+          !onReservar && (
+            <p role="status" className="mt-6 text-center text-sm text-zinc-400">
+              La confirmación de reservaciones todavía no está disponible.
+            </p>
+          )}
       </section>
     </>
   );

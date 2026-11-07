@@ -54,6 +54,28 @@ function esSucursal(valor: unknown): valor is Sucursal {
   );
 }
 
+function erroresPorCampo(detalle: unknown): ErroresDisponibilidad {
+  if (!detalle || typeof detalle !== "object" || !("errores" in detalle))
+    return {};
+  const errores = detalle.errores;
+  if (!errores || typeof errores !== "object") return {};
+  const resultado: ErroresDisponibilidad = {};
+  for (const [campo, mensaje] of Object.entries(errores)) {
+    const destino = campo === "id" ? "sucursalId" : campo;
+    if (
+      (destino === "sucursalId" ||
+        destino === "fecha" ||
+        destino === "hora" ||
+        destino === "personas") &&
+      typeof mensaje === "string" &&
+      mensaje.trim()
+    ) {
+      resultado[destino] = mensaje;
+    }
+  }
+  return resultado;
+}
+
 export async function listarSucursales(): Promise<SucursalesResultado> {
   try {
     const apiUrl = process.env.API_URL;
@@ -112,6 +134,8 @@ export async function consultarDisponibilidad(
     if (!response.ok) {
       if (response.status === 400 || response.status === 404) {
         const detalle = await response.json();
+        const errores = erroresPorCampo(detalle);
+        if (Object.keys(errores).length) return { mesas: [], errores };
         const mensaje = Array.isArray(detalle.message)
           ? detalle.message.join(" ")
           : detalle.message;

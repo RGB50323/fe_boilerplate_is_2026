@@ -9,6 +9,15 @@ export type ErroresDisponibilidad = Partial<
   Record<keyof FiltrosDisponibilidad, string>
 >;
 
+// Datos que H09 entrega al formulario de H10. clienteId nunca viene del cliente.
+export type DatosReservacion = {
+  mesaId: number;
+  sucursalId: number;
+  fecha: string;
+  hora: string;
+  personas: number;
+};
+
 export type MesaDisponible = {
   mesaId: number;
   numero: number;
@@ -81,6 +90,7 @@ export function horasDisponibles(
 export function validarFiltros(
   filtros: FiltrosDisponibilidad,
   horarios?: HorarioSucursal[],
+  ahora = new Date(),
 ): ErroresDisponibilidad {
   const errores: ErroresDisponibilidad = {};
   if (
@@ -92,20 +102,22 @@ export function validarFiltros(
   }
   if (!fechaValida(filtros.fecha)) {
     errores.fecha = "Ingresá una fecha válida.";
-  } else if (filtros.fecha < fechaLocal()) {
-    errores.fecha = "La fecha no puede estar en el pasado.";
+  } else if (filtros.fecha < fechaLocal(ahora)) {
+    errores.fecha = "Horario no válido: la fecha no puede estar en el pasado.";
   }
   if (!/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(filtros.hora)) {
     errores.hora = "Seleccioná una hora en intervalos de 30 minutos.";
   } else if (
     !errores.fecha &&
     (new Date(`${filtros.fecha}T${filtros.hora}:00-06:00`).getTime() <
-      Date.now() ||
+      ahora.getTime() ||
       (horarios !== undefined &&
-        !horasDisponibles(filtros.fecha, horarios).includes(filtros.hora)))
+        !horasDisponibles(filtros.fecha, horarios, ahora).includes(
+          filtros.hora,
+        )))
   ) {
     errores.hora =
-      "Elegí una hora futura que permita 2 horas dentro del horario de atención.";
+      "Horario no válido: elegí una hora futura que permita 2 horas dentro del horario de atención.";
   }
   if (
     !/^\d+$/.test(filtros.personas) ||
