@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, deleteSession } from "@/lib/session";
+import { createSession, deleteSession, getSession } from "@/lib/session";
 
 export type LoginState = {
   error?: string;
@@ -68,10 +68,13 @@ export async function login(
   }
 
   await createSession(token);
-  redirect("/");
+  redirect("/menu");
 }
 
 export async function logout() {
   await deleteSession();
-  redirect("/login");
+}
+
+export async function obtenerEstadoSesion() {
+  return Boolean(await getSession());
 }

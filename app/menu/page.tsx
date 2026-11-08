@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Fraunces } from "next/font/google";
 import { useRouter, useSearchParams } from "next/navigation";
+import { logout, obtenerEstadoSesion } from "@/app/actions/auth";
 import { consultarMenu } from "@/app/actions/menu";
 import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -51,6 +52,18 @@ function Menu() {
   >([]);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [reintento, setReintento] = useState(0);
+  const [autenticado, setAutenticado] = useState(false);
+  const [cerrandoSesion, setCerrandoSesion] = useState(false);
+
+  useEffect(() => {
+    let activo = true;
+    obtenerEstadoSesion().then((estado) => {
+      if (activo) setAutenticado(estado);
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const errores = validarFiltros(entrada);
   const clave = `${qs}#${reintento}`;
@@ -148,6 +161,10 @@ function Menu() {
     </svg>
   );
 
+  if (cerrandoSesion) {
+    return <PageLoading mensaje="Cerrando sesión..." pantallaCompleta />;
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
 
@@ -166,6 +183,31 @@ function Menu() {
               label: s.nombre,
             }))}
           />
+          {autenticado ? (
+            <Button
+              type="button"
+              onClick={async () => {
+                setCerrandoSesion(true);
+                try {
+                  await logout();
+                  window.location.reload();
+                } finally {
+                  setCerrandoSesion(false);
+                }
+              }}
+              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
+            >
+              Cerrar sesión
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
+            >
+              Iniciar sesión
+            </Button>
+          )}
         </div>
       </header>
 
@@ -179,7 +221,7 @@ function Menu() {
         {/* Sección (categoría) */}
         <Dropdown
           id="seccion"
-          label="Sección"
+          label="Categoría"
           labelClassName="sr-only md:not-sr-only md:text-sm md:text-zinc-400"
           value={entrada.categoriaId}
           onChange={(categoriaId) =>
