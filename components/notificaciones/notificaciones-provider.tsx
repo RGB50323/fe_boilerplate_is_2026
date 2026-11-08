@@ -23,6 +23,8 @@ type NotificacionesContexto = {
   // Campanas dentro de un header
   campanasEnLinea: number;
   registrarCampanaEnLinea: () => () => void;
+  // El panel abierto ya sondea por su cuenta
+  marcarPanelAbierto: (abierto: boolean) => void;
 };
 
 const NotificacionesContext = createContext<NotificacionesContexto | null>(
@@ -32,15 +34,18 @@ const NotificacionesContext = createContext<NotificacionesContexto | null>(
 export function NotificacionesProvider({ children }: { children: ReactNode }) {
   const [noLeidas, setNoLeidas] = useState(0);
   const [estadoSesion, setEstadoSesion] = useState<EstadoSesion>("desconocida");
-  const consultando = useRef(false);
+  // Solo aplica la respuesta más reciente
+  const ultimaSolicitud = useRef(0);
+  const estadoRef = useRef(estadoSesion);
+  const panelAbierto = useRef(false);
   // Reconsulta al cambiar de ruta
   const pathname = usePathname();
 
   const consultarContador = useCallback(async () => {
-    if (consultando.current) return;
-    consultando.current = true;
+    const solicitud = ++ultimaSolicitud.current;
     try {
       const resultado = await listarNotificaciones(1);
+      if (solicitud !== ultimaSolicitud.current) return;
       if ("sinSesion" in resultado) {
         setEstadoSesion("sin-sesion");
         setNoLeidas(0);
@@ -52,10 +57,16 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
       }
     } catch {
       // Un error no cierra la sesión
-      setEstadoSesion("error");
-    } finally {
-      consultando.current = false;
+      if (solicitud === ultimaSolicitud.current) setEstadoSesion("error");
     }
+  }, []);
+
+  useEffect(() => {
+    estadoRef.current = estadoSesion;
+  }, [estadoSesion]);
+
+  const marcarPanelAbierto = useCallback((abierto: boolean) => {
+    panelAbierto.current = abierto;
   }, []);
 
   const actualizarNoLeidas = useCallback((cantidad: number) => {
@@ -75,6 +86,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
     };
   }, [consultarContador]);
   const registrarSinSesion = useCallback(() => {
+    ultimaSolicitud.current += 1;
     setEstadoSesion("sin-sesion");
     setNoLeidas(0);
   }, []);
@@ -82,7 +94,13 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const inicio = window.setTimeout(() => void consultarContador(), 0);
     const intervalo = window.setInterval(() => {
-      if (document.visibilityState === "visible") void consultarContador();
+      // Sin sesión espera al siguiente cambio de ruta
+      if (
+        document.visibilityState === "visible" &&
+        estadoRef.current !== "sin-sesion" &&
+        !panelAbierto.current
+      )
+        void consultarContador();
     }, 30_000);
     return () => {
       window.clearTimeout(inicio);
@@ -100,6 +118,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         registrarSinSesion,
         campanasEnLinea,
         registrarCampanaEnLinea,
+        marcarPanelAbierto,
       }}
     >
       {children}

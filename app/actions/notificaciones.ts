@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/session";
-import { MODULOS_NOTIFICACION, type Notificacion } from "@/lib/notificaciones";
+import { type Notificacion } from "@/lib/notificaciones";
 
 const MENSAJE_ERROR = "No pudimos cargar tus notificaciones";
 
@@ -43,9 +43,6 @@ function esNotificacion(valor: unknown): valor is Notificacion {
     typeof notificacion.titulo === "string" &&
     typeof notificacion.mensaje === "string" &&
     typeof notificacion.moduloOrigen === "string" &&
-    MODULOS_NOTIFICACION.includes(
-      notificacion.moduloOrigen as (typeof MODULOS_NOTIFICACION)[number],
-    ) &&
     referenciaValida &&
     typeof notificacion.leida === "boolean" &&
     typeof notificacion.creadaEn === "string" &&

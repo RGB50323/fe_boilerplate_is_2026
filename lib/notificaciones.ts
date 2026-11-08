@@ -21,7 +21,8 @@ export type Notificacion = {
   id: string | number;
   titulo: string;
   mensaje: string;
-  moduloOrigen: ModuloNotificacion;
+  // Puede llegar un módulo nuevo del backend
+  moduloOrigen: string;
   referencia: ReferenciaNotificacion | null;
   leida: boolean;
   creadaEn: string;
@@ -39,8 +40,8 @@ const ETIQUETAS_MODULO: Record<ModuloNotificacion, string> = {
   REPORTES: "Reportes",
 };
 
-export function etiquetaModulo(modulo: ModuloNotificacion): string {
-  return ETIQUETAS_MODULO[modulo];
+export function etiquetaModulo(modulo: string): string {
+  return ETIQUETAS_MODULO[modulo as ModuloNotificacion] ?? "General";
 }
 
 export function formatoContador(noLeidas: number): string {

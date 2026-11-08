@@ -30,8 +30,17 @@ export function PanelNotificaciones({
   topMovil?: number;
 }) {
   const router = useRouter();
-  const { actualizarNoLeidas, decrementarNoLeidas, registrarSinSesion } =
-    useNotificaciones();
+  const {
+    actualizarNoLeidas,
+    decrementarNoLeidas,
+    registrarSinSesion,
+    marcarPanelAbierto,
+  } = useNotificaciones();
+
+  useEffect(() => {
+    marcarPanelAbierto(true);
+    return () => marcarPanelAbierto(false);
+  }, [marcarPanelAbierto]);
   const [estado, setEstado] = useState<EstadoPanel>("cargando");
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
   const [total, setTotal] = useState(0);
