@@ -25,7 +25,7 @@ const aviso = {
   id: 1,
   titulo: "Reservación confirmada",
   mensaje: "Tu mesa estará lista a las 7:00 p. m.",
-  moduloOrigen: "RESERVACIONES" as const,
+  moduloOrigen: "RESERVACIONES",
   referencia: { tipo: "RESERVA", id: 8 },
   leida: false,
   creadaEn: "2026-11-07T15:30:00.000Z",
@@ -265,5 +265,60 @@ describe("campana de notificaciones", () => {
     expect(
       screen.getByRole("button", { name: /Notificaciones,/i }),
     ).toBeVisible();
+  });
+
+  it("ignora una respuesta vieja que llega después de cerrar sesión", async () => {
+    let resolverVieja!: (resultado: ListaNotificacionesResultado) => void;
+    listar.mockReturnValueOnce(
+      new Promise((resolver) => {
+        resolverVieja = resolver;
+      }),
+    );
+    listar.mockResolvedValue({ sinSesion: true });
+    const { rerender } = render(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+        <CampanaNotificaciones enLinea />
+      </NotificacionesProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+
+    rerender(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+      </NotificacionesProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    await act(async () => resolverVieja(lista()));
+
+    expect(
+      screen.queryByRole("button", { name: /Notificaciones,/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("no sondea sin sesión hasta el siguiente cambio de ruta", async () => {
+    listar.mockResolvedValue({ sinSesion: true });
+    montar();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(listar).toHaveBeenCalledTimes(1);
+
+    await act(async () => vi.advanceTimersByTimeAsync(90_000));
+    expect(listar).toHaveBeenCalledTimes(1);
+  });
+
+  it("con el panel abierto solo sondea el panel", async () => {
+    montar();
+    await abrirPanel();
+    const llamadas = listar.mock.calls.length;
+
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
+    expect(listar).toHaveBeenCalledTimes(llamadas + 1);
+  });
+
+  it("muestra una etiqueta genérica para un módulo desconocido", async () => {
+    listar.mockResolvedValue(lista([{ ...aviso, moduloOrigen: "NUEVO" }]));
+    montar();
+    await abrirPanel();
+    expect(screen.getByText("General")).toBeVisible();
   });
 });

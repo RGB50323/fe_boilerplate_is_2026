@@ -49,6 +49,17 @@ describe("acciones de notificaciones", () => {
     expect(opciones.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("acepta un módulo que el frontend aún no conoce", async () => {
+    const lista = {
+      datos: [{ ...notificacion, moduloOrigen: "NUEVO" }],
+      total: 1,
+      pagina: 1,
+      noLeidas: 1,
+    };
+    fetchMock.mockResolvedValue(respuesta(lista));
+    expect(await listarNotificaciones(1)).toEqual(lista);
+  });
+
   it("no consulta sin sesión", async () => {
     obtenerSesion.mockResolvedValue(undefined);
     expect(await listarNotificaciones(1)).toEqual({ sinSesion: true });

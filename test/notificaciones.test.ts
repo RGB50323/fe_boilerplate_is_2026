@@ -20,6 +20,7 @@ describe("helpers de notificaciones", () => {
     expect(etiquetaModulo("MENU")).toBe("Menú");
     expect(etiquetaModulo("RESENAS")).toBe("Reseñas");
     expect(etiquetaModulo("RESERVACIONES")).toBe("Reservaciones");
+    expect(etiquetaModulo("NUEVO")).toBe("General");
   });
 
   it("resuelve las referencias conocidas", () => {
