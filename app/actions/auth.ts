@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSession, deleteSession } from "@/lib/session";
+import { revalidatePath } from "next/cache";
 
 export type LoginState = {
   error?: string;
@@ -68,10 +69,10 @@ export async function login(
   }
 
   await createSession(token);
-  redirect("/");
+  redirect("/menu");
 }
 
 export async function logout() {
   await deleteSession();
-  redirect("/login");
+  revalidatePath("/menu");
 }

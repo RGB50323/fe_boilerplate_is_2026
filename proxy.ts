@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/session";
 
-const publicRoutes = ["/reservas"];
+const publicRoutes = ["/menu", "/reservas"];
 const guestOnlyRoutes = ["/login"];
 
 // Chequeo optimista: solo verifica que exista la cookie de sesión.
@@ -17,7 +17,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (isGuestOnlyRoute && hasSession) {
-    return NextResponse.redirect(new URL("/", request.nextUrl));
+    return NextResponse.redirect(new URL("/menu", request.nextUrl));
   }
 
   return NextResponse.next();
