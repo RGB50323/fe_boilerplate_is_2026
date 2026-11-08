@@ -5,6 +5,7 @@ import { logout } from "@/app/actions/auth";
 import { Fraunces } from "next/font/google";
 import { useRouter, useSearchParams } from "next/navigation";
 import { consultarMenu } from "@/app/actions/menu";
+import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
 import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -158,11 +159,12 @@ function Menu({ autenticado }: { autenticado: boolean }) {
         </div>
       )}
       {/* Encabezado */}
-      <header className="flex items-center justify-between gap-4 border-b border-zinc-700 pb-4">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4">
         <p className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3">
           <Dropdown
             id="sucursal"
+            className="max-sm:min-w-28"
             label="Sucursal"
             labelClassName="sr-only text-sm text-zinc-400 sm:not-sr-only"
             value={sucursalId}
@@ -172,6 +174,7 @@ function Menu({ autenticado }: { autenticado: boolean }) {
               label: s.nombre,
             }))}
           />
+          {autenticado && <CampanaNotificaciones enLinea />}
           {autenticado ? (
             <Button
               type="button"
