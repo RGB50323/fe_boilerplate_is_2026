@@ -20,6 +20,9 @@ type NotificacionesContexto = {
   actualizarNoLeidas: (cantidad: number) => void;
   decrementarNoLeidas: () => void;
   registrarSinSesion: () => void;
+  // Campanas dentro de un header
+  campanasEnLinea: number;
+  registrarCampanaEnLinea: () => () => void;
 };
 
 const NotificacionesContext = createContext<NotificacionesContexto | null>(
@@ -30,8 +33,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
   const [noLeidas, setNoLeidas] = useState(0);
   const [estadoSesion, setEstadoSesion] = useState<EstadoSesion>("desconocida");
   const consultando = useRef(false);
-  // El layout raíz no se vuelve a montar al navegar (p. ej. tras iniciar o cerrar sesión),
-  // así que se vuelve a consultar en cada cambio de ruta.
+  // Reconsulta al cambiar de ruta
   const pathname = usePathname();
 
   const consultarContador = useCallback(async () => {
@@ -49,7 +51,7 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         setEstadoSesion("error");
       }
     } catch {
-      // El panel ofrece el reintento; un fallo transitorio no equivale a cerrar sesión.
+      // Un error no cierra la sesión
       setEstadoSesion("error");
     } finally {
       consultando.current = false;
@@ -62,6 +64,16 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
   const decrementarNoLeidas = useCallback(() => {
     setNoLeidas((cantidad) => Math.max(0, cantidad - 1));
   }, []);
+  const [campanasEnLinea, setCampanasEnLinea] = useState(0);
+  const registrarCampanaEnLinea = useCallback(() => {
+    setCampanasEnLinea((cantidad) => cantidad + 1);
+    return () => {
+      setCampanasEnLinea((cantidad) => Math.max(0, cantidad - 1));
+      // Revisa la sesión al quitar la campana del header
+      setEstadoSesion("desconocida");
+      void consultarContador();
+    };
+  }, [consultarContador]);
   const registrarSinSesion = useCallback(() => {
     setEstadoSesion("sin-sesion");
     setNoLeidas(0);
@@ -86,6 +98,8 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
         actualizarNoLeidas,
         decrementarNoLeidas,
         registrarSinSesion,
+        campanasEnLinea,
+        registrarCampanaEnLinea,
       }}
     >
       {children}

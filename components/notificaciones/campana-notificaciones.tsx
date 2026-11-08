@@ -5,9 +5,16 @@ import { formatoContador } from "@/lib/notificaciones";
 import { PanelNotificaciones } from "./panel-notificaciones";
 import { useNotificaciones } from "./notificaciones-provider";
 
-export function CampanaNotificaciones() {
-  const { noLeidas, estadoSesion } = useNotificaciones();
+type Props = {
+  // Campana dentro del header de la pantalla
+  enLinea?: boolean;
+};
+
+export function CampanaNotificaciones({ enLinea = false }: Props) {
+  const { noLeidas, estadoSesion, campanasEnLinea, registrarCampanaEnLinea } =
+    useNotificaciones();
   const [abierto, setAbierto] = useState(false);
+  const [topMovil, setTopMovil] = useState<number>();
   const contenedorRef = useRef<HTMLDivElement>(null);
   const botonRef = useRef<HTMLButtonElement>(null);
 
@@ -31,8 +38,13 @@ export function CampanaNotificaciones() {
     };
   }, [abierto]);
 
+  useEffect(() => {
+    if (enLinea) return registrarCampanaEnLinea();
+  }, [enLinea, registrarCampanaEnLinea]);
+
   if (estadoSesion === "desconocida" || estadoSesion === "sin-sesion")
     return null;
+  if (!enLinea && campanasEnLinea > 0) return null;
 
   const detalleContador =
     noLeidas === 0
@@ -42,7 +54,9 @@ export function CampanaNotificaciones() {
   return (
     <div
       ref={contenedorRef}
-      className="fixed right-3 top-3 z-50 sm:right-5 sm:top-4"
+      className={
+        enLinea ? "relative" : "fixed right-3 top-3 z-50 sm:right-5 sm:top-4"
+      }
     >
       <button
         ref={botonRef}
@@ -50,7 +64,12 @@ export function CampanaNotificaciones() {
         aria-label={`Notificaciones, ${detalleContador}`}
         aria-expanded={abierto}
         aria-controls="panel-notificaciones"
-        onClick={() => setAbierto((valor) => !valor)}
+        onClick={() => {
+          // En celular el panel va fijo bajo la campana
+          if (enLinea && botonRef.current)
+            setTopMovil(botonRef.current.getBoundingClientRect().bottom + 8);
+          setAbierto((valor) => !valor);
+        }}
         className="relative grid size-10 place-items-center rounded-full border border-zinc-700 bg-[#18181b] text-zinc-100 shadow-lg shadow-black/30 transition-colors hover:bg-[#2b2b2f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
       >
         <svg
@@ -74,7 +93,12 @@ export function CampanaNotificaciones() {
           </span>
         )}
       </button>
-      {abierto && <PanelNotificaciones onNavegar={() => setAbierto(false)} />}
+      {abierto && (
+        <PanelNotificaciones
+          topMovil={enLinea ? topMovil : undefined}
+          onNavegar={() => setAbierto(false)}
+        />
+      )}
     </div>
   );
 }

@@ -214,4 +214,56 @@ describe("campana de notificaciones", () => {
       screen.getByRole("button", { name: /Notificaciones, 1 notificación/i }),
     ).toBeVisible();
   });
+
+  it("oculta la campana flotante mientras una pantalla tiene su campana en línea", async () => {
+    const { rerender } = render(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+        <header data-testid="encabezado">
+          <CampanaNotificaciones enLinea />
+        </header>
+      </NotificacionesProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    const campanas = screen.getAllByRole("button", {
+      name: /Notificaciones,/i,
+    });
+    expect(campanas).toHaveLength(1);
+    expect(screen.getByTestId("encabezado")).toContainElement(campanas[0]);
+
+    // Al cerrar sesión la pantalla quita su campana sin cambiar de ruta.
+    listar.mockResolvedValue({ sinSesion: true });
+    rerender(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+        <header data-testid="encabezado" />
+      </NotificacionesProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Notificaciones,/i }),
+    ).not.toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(
+      screen.queryByRole("button", { name: /Notificaciones,/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("vuelve a mostrar la flotante si sigue la sesión al salir de la pantalla con campana en línea", async () => {
+    const { rerender } = render(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+        <CampanaNotificaciones enLinea />
+      </NotificacionesProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    rerender(
+      <NotificacionesProvider>
+        <CampanaNotificaciones />
+      </NotificacionesProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(
+      screen.getByRole("button", { name: /Notificaciones,/i }),
+    ).toBeVisible();
+  });
 });

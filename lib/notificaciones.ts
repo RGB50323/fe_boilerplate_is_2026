@@ -63,7 +63,7 @@ export function rutaDeReferencia(
   if (!referencia) return null;
   const tipo = referencia.tipo.toUpperCase();
 
-  // Estas rutas pueden incorporarse en historias posteriores del frontend.
+  // Rutas aún no creadas
   if (tipo.startsWith("PEDIDO"))
     return `/pedidos/${encodeURIComponent(String(referencia.id))}`;
   if (tipo.startsWith("RESERVA")) return "/reservas";

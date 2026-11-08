@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   listarNotificaciones,
@@ -16,7 +22,13 @@ import { useNotificaciones } from "./notificaciones-provider";
 
 type EstadoPanel = "cargando" | "listo" | "error";
 
-export function PanelNotificaciones({ onNavegar }: { onNavegar?: () => void }) {
+export function PanelNotificaciones({
+  onNavegar,
+  topMovil,
+}: {
+  onNavegar?: () => void;
+  topMovil?: number;
+}) {
   const router = useRouter();
   const { actualizarNoLeidas, decrementarNoLeidas, registrarSinSesion } =
     useNotificaciones();
@@ -72,7 +84,7 @@ export function PanelNotificaciones({ onNavegar }: { onNavegar?: () => void }) {
         if (solicitud.current === numeroSolicitud && modo !== "sondeo")
           setEstado("error");
       } finally {
-        // Un sondeo puede invalidar la solicitud de "Ver más"; el botón no debe quedar trabado.
+        // Evita que "Ver más" quede trabado
         if (modo === "anexar" || solicitud.current === numeroSolicitud)
           setCargandoMas(false);
       }
@@ -120,7 +132,16 @@ export function PanelNotificaciones({ onNavegar }: { onNavegar?: () => void }) {
     <section
       id="panel-notificaciones"
       aria-label="Historial de notificaciones"
-      className="absolute right-0 top-[calc(100%+0.6rem)] flex max-h-[min(36rem,calc(100dvh-5rem))] w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-700 bg-[#18181b] text-zinc-100 shadow-2xl shadow-black/50"
+      style={
+        topMovil === undefined
+          ? undefined
+          : ({ "--top-panel": `${topMovil}px` } as CSSProperties)
+      }
+      className={`absolute right-0 top-[calc(100%+0.6rem)] z-50 ${
+        topMovil === undefined
+          ? ""
+          : "max-sm:fixed max-sm:inset-x-3 max-sm:top-(--top-panel) max-sm:max-h-[calc(100dvh-var(--top-panel)-0.75rem)] max-sm:w-auto max-sm:max-w-none"
+      } flex max-h-[min(36rem,calc(100dvh-5rem))] w-[calc(100vw-1.5rem)] max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-700 bg-[#18181b] text-zinc-100 shadow-2xl shadow-black/50`}
     >
       <header className="border-b border-zinc-800 px-4 py-3.5">
         <h2 className="text-base font-semibold">Notificaciones</h2>

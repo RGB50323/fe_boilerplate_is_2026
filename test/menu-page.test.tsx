@@ -18,6 +18,9 @@ vi.mock("next/font/google", () => ({
 }));
 vi.mock("@/app/actions/menu", () => ({ consultarMenu: mocks.consultarMenu }));
 vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout }));
+vi.mock("@/components/notificaciones/campana-notificaciones", () => ({
+  CampanaNotificaciones: () => null,
+}));
 
 const menu = {
   sucursalId: 1,
