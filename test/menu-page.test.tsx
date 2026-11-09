@@ -228,14 +228,15 @@ describe("pantalla del menú", () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
   });
 
-  it("muestra el acceso a Categorías al gerente y navega al panel", async () => {
+  it("muestra el acceso a Categorías al gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     render(<MenuView autenticado esGerente />);
     await screen.findByText("Horchata");
 
-    fireEvent.click(screen.getByRole("button", { name: "Categorías" }));
-
-    expect(mocks.router.push).toHaveBeenCalledWith("/admin/categorias");
+    expect(screen.getByRole("link", { name: "Categorías" })).toHaveAttribute(
+      "href",
+      "/admin/categorias",
+    );
   });
 
   it("no muestra el acceso a Categorías si no es gerente", async () => {
@@ -244,7 +245,7 @@ describe("pantalla del menú", () => {
     await screen.findByText("Horchata");
 
     expect(
-      screen.queryByRole("button", { name: "Categorías" }),
+      screen.queryByRole("link", { name: "Categorías" }),
     ).not.toBeInTheDocument();
   });
 });
