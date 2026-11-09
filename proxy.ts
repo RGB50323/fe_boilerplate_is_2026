@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { rolesRequeridosPara, tieneRolPermitido } from "@/lib/roles";
 import { SESSION_COOKIE } from "@/lib/session";
 
 const publicRoutes = ["/menu", "/reservas"];
@@ -10,13 +11,19 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = publicRoutes.includes(pathname);
   const isGuestOnlyRoute = guestOnlyRoutes.includes(pathname);
-  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const hasSession = Boolean(token);
 
   if (!isPublicRoute && !isGuestOnlyRoute && !hasSession) {
     return NextResponse.redirect(new URL("/login", request.nextUrl));
   }
 
   if (isGuestOnlyRoute && hasSession) {
+    return NextResponse.redirect(new URL("/menu", request.nextUrl));
+  }
+
+  const requiredRoles = rolesRequeridosPara(pathname);
+  if (token && requiredRoles && !tieneRolPermitido(token, requiredRoles)) {
     return NextResponse.redirect(new URL("/menu", request.nextUrl));
   }
 
