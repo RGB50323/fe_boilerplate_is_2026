@@ -11,9 +11,9 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { SearchBar } from "@/components/ui/search-bar";
-import { CardPlatillo } from "@/components/ui/menu/card-platillo";
-import { PlatillosSkeleton } from "@/components/ui/menu/platillos-skeleton";
-import { RangoPrecio } from "@/components/ui/menu/rango-precio";
+import { CardPlatillo } from "@/components/menu/card-platillo";
+import { PlatillosSkeleton } from "@/components/menu/platillos-skeleton";
+import { RangoPrecio } from "@/components/menu/rango-precio";
 import {
   FILTROS_VACIOS,
   filtrosAQuery,
@@ -38,7 +38,13 @@ function sucursalDe(qs: string): number {
 
 type Resultado = { clave: string; menu?: MenuRespuesta };
 
-function Menu({ autenticado }: { autenticado: boolean }) {
+function Menu({
+  autenticado,
+  esGerente,
+}: {
+  autenticado: boolean;
+  esGerente: boolean;
+}) {
   const router = useRouter();
   const qs = useSearchParams().toString();
   const sucursalId = sucursalDe(qs);
@@ -161,7 +167,7 @@ function Menu({ autenticado }: { autenticado: boolean }) {
       {/* Encabezado */}
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4">
         <p className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <Dropdown
             id="sucursal"
             className="max-sm:min-w-28"
@@ -175,6 +181,15 @@ function Menu({ autenticado }: { autenticado: boolean }) {
             }))}
           />
           {autenticado && <CampanaNotificaciones enLinea />}
+          {esGerente && (
+            <Button
+              type="button"
+              onClick={() => router.push("/admin/categorias")}
+              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
+            >
+              Categorías
+            </Button>
+          )}
           {autenticado ? (
             <Button
               type="button"
@@ -328,13 +343,19 @@ function Menu({ autenticado }: { autenticado: boolean }) {
   );
 }
 
-export function MenuView({ autenticado }: { autenticado: boolean }) {
+export function MenuView({
+  autenticado,
+  esGerente = false,
+}: {
+  autenticado: boolean;
+  esGerente?: boolean;
+}) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando menú..." />}>
-        <Menu autenticado={autenticado} />
+        <Menu autenticado={autenticado} esGerente={esGerente} />
       </Suspense>
     </main>
   );
