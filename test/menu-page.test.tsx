@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MenuView } from "@/app/menu/menu-view";
 
 const mocks = vi.hoisted(() => ({
-  router: { replace: vi.fn() },
+  router: { replace: vi.fn(), push: vi.fn() },
   params: { current: new URLSearchParams() },
   consultarMenu: vi.fn(),
   logout: vi.fn(),
@@ -59,6 +59,7 @@ const menu = {
 describe("pantalla del menú", () => {
   beforeEach(() => {
     mocks.router.replace.mockClear();
+    mocks.router.push.mockClear();
     mocks.consultarMenu.mockReset();
     mocks.logout.mockReset();
     mocks.params.current = new URLSearchParams();
@@ -225,5 +226,26 @@ describe("pantalla del menú", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
 
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
+  });
+
+  it("muestra el acceso a Categorías al gerente", async () => {
+    mocks.consultarMenu.mockResolvedValue({ menu });
+    render(<MenuView autenticado esGerente />);
+    await screen.findByText("Horchata");
+
+    expect(screen.getByRole("link", { name: "Categorías" })).toHaveAttribute(
+      "href",
+      "/admin/categorias",
+    );
+  });
+
+  it("no muestra el acceso a Categorías si no es gerente", async () => {
+    mocks.consultarMenu.mockResolvedValue({ menu });
+    render(<MenuView autenticado />);
+    await screen.findByText("Horchata");
+
+    expect(
+      screen.queryByRole("link", { name: "Categorías" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getSession } from "@/lib/session";
+import { obtenerUsuarioActual } from "@/lib/usuario";
 import { MenuView } from "./menu-view";
 
 export const metadata: Metadata = {
@@ -8,5 +9,11 @@ export const metadata: Metadata = {
 
 export default async function MenuPage() {
   const autenticado = Boolean(await getSession());
-  return <MenuView autenticado={autenticado} />;
+  const usuario = autenticado ? await obtenerUsuarioActual() : null;
+  return (
+    <MenuView
+      autenticado={autenticado}
+      esGerente={usuario?.rol === "GERENTE"}
+    />
+  );
 }
