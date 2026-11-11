@@ -1,6 +1,11 @@
 import { getSession } from "@/lib/session";
 
-export type UsuarioActual = { id: string; email: string; rol: string };
+export type UsuarioActual = {
+  id: string;
+  email: string;
+  rol: string;
+  sucursalId: number | null;
+};
 
 export async function obtenerUsuarioActual(): Promise<UsuarioActual | null> {
   const token = await getSession();
