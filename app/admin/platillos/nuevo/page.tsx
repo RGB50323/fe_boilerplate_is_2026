@@ -23,7 +23,7 @@ export default async function NuevoPlatilloPage() {
     : [];
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <main className="py-8">
       <FormularioPlatillo
         sucursalId={usuario.sucursalId}
         categorias={categorias}

@@ -98,12 +98,20 @@ export function CategoriasView({
               Panel de gerente
             </p>
           </div>
-          <Link
-            href="/menu"
-            className="text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
-          >
-            Ver menú
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/platillos"
+              className="text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Platillos
+            </Link>
+            <Link
+              href="/menu"
+              className="text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Ver menú
+            </Link>
+          </div>
         </header>
 
         <div className="my-8 flex flex-wrap items-center justify-between gap-4">

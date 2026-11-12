@@ -184,10 +184,10 @@ function Menu({
           {autenticado && <CampanaNotificaciones enLinea />}
           {esGerente && (
             <Link
-              href="/admin/categorias"
+              href="/admin/platillos"
               className="whitespace-nowrap rounded-full bg-[#FF7A1A] px-4 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:px-5 sm:py-3"
             >
-              Categorías
+              Gestionar platillos
             </Link>
           )}
           {autenticado ? (

@@ -95,6 +95,19 @@ export async function deshabilitarPlatillo(
   });
 }
 
+export async function habilitarPlatillo(
+  id: number,
+): Promise<Resultado<PlatilloDeshabilitado>> {
+  return llamar<PlatilloDeshabilitado>(`platillos/${id}/habilitar`, {
+    metodo: "PATCH",
+    mensajes: {
+      404: "El platillo o su categoría ya no existe.",
+      409: "El platillo ya está habilitado.",
+      422: "La categoría del platillo está deshabilitada. Habilítala primero.",
+    },
+  });
+}
+
 export async function subirImagenPlatillo(
   formData: FormData,
 ): Promise<Resultado<ImagenSubida>> {

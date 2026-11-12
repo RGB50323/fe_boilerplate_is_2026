@@ -32,7 +32,7 @@ export default async function EditarPlatilloPage({
   if (!platillos.ok) {
     if (platillos.sinSesion) redirect("/login");
     return (
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+      <main className="py-8">
         <p role="alert" className="text-red-400">
           {platillos.error}
         </p>
@@ -50,7 +50,7 @@ export default async function EditarPlatilloPage({
     : [{ id: platillo.categoriaId, nombre: platillo.categoriaNombre }];
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+    <main className="py-8">
       <FormularioPlatillo
         sucursalId={usuario.sucursalId}
         categorias={opciones}
