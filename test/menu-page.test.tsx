@@ -228,24 +228,24 @@ describe("pantalla del menú", () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
   });
 
-  it("muestra el acceso a Categorías al gerente", async () => {
+  it("muestra el acceso a Gestionar platillos al gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     render(<MenuView autenticado esGerente />);
     await screen.findByText("Horchata");
 
-    expect(screen.getByRole("link", { name: "Categorías" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Gestionar platillos" })).toHaveAttribute(
       "href",
-      "/admin/categorias",
+      "/admin/platillos",
     );
   });
 
-  it("no muestra el acceso a Categorías si no es gerente", async () => {
+  it("no muestra el acceso a Gestionar platillos si no es gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     render(<MenuView autenticado />);
     await screen.findByText("Horchata");
 
     expect(
-      screen.queryByRole("link", { name: "Categorías" }),
+      screen.queryByRole("link", { name: "Gestionar platillos" }),
     ).not.toBeInTheDocument();
   });
 });
