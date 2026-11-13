@@ -42,9 +42,11 @@ type Resultado = { clave: string; menu?: MenuRespuesta };
 function Menu({
   autenticado,
   esGerente,
+  esMesero,
 }: {
   autenticado: boolean;
   esGerente: boolean;
+  esMesero: boolean;
 }) {
   const router = useRouter();
   const qs = useSearchParams().toString();
@@ -188,6 +190,14 @@ function Menu({
               className="whitespace-nowrap rounded-full bg-[#FF7A1A] px-4 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:px-5 sm:py-3"
             >
               Gestionar platillos
+            </Link>
+          )}
+          {esMesero && (
+            <Link
+              href="/mesero/pedidos"
+              className="whitespace-nowrap rounded-full bg-[#FF7A1A] px-4 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:px-5 sm:py-3"
+            >
+              Registrar pedido
             </Link>
           )}
           {autenticado ? (
@@ -346,16 +356,22 @@ function Menu({
 export function MenuView({
   autenticado,
   esGerente = false,
+  esMesero = false,
 }: {
   autenticado: boolean;
   esGerente?: boolean;
+  esMesero?: boolean;
 }) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando menú..." />}>
-        <Menu autenticado={autenticado} esGerente={esGerente} />
+        <Menu
+          autenticado={autenticado}
+          esGerente={esGerente}
+          esMesero={esMesero}  
+        />
       </Suspense>
     </main>
   );

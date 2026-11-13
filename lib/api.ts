@@ -4,12 +4,12 @@ export type Resultado<T> =
   | { ok: true; datos: T }
   | { ok: false; error: string; sinSesion?: boolean };
 
-const ERROR_GENERICO = "No pudimos completar la operación. Intenta de nuevo.";
+export const ERROR_GENERICO = "No pudimos completar la operación. Intenta de nuevo.";
 const SIN_SESION = "Tu sesión expiró. Inicia sesión de nuevo.";
 const SIN_PERMISO = "No tienes permiso para realizar esta acción.";
 
 type Opciones = {
-  metodo?: "GET" | "POST" | "PUT" | "PATCH";
+  metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   cuerpo?: unknown;
   mensajes?: Partial<Record<number, string>>;
 };

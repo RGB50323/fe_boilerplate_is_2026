@@ -24,3 +24,31 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes drawer-desde-derecha {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawer-desde-izquierda {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .drawer-derecha {
+    animation: drawer-desde-derecha 0.3s ease-out;
+  }
+
+  .drawer-izquierda {
+    animation: drawer-desde-izquierda 0.3s ease-out;
+  }
+}
