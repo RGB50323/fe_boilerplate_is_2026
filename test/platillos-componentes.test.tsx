@@ -11,6 +11,7 @@ import { FormularioPlatillo } from "@/components/platillos/formulario-platillo";
 import { TablaPlatillos } from "@/components/platillos/tabla-platillos";
 import { PlatillosView } from "@/app/admin/platillos/platillos-view";
 import type { Platillo } from "@/lib/platillos";
+import { paginaVacia, type Pagina } from "@/lib/paginacion";
 
 const m = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
@@ -476,8 +477,16 @@ describe("PlatillosView", () => {
     nombre: "Tamal",
     activo: false,
   };
+  const otro: Platillo = { ...platillo, id: 12, nombre: "Sopa de res" };
 
-  function pintar(inicial: Platillo[] = [platillo, inactivo]) {
+  function paginaDe(
+    datos: Platillo[],
+    extra: Partial<Pagina<Platillo>> = {},
+  ): Pagina<Platillo> {
+    return { pagina: 1, totalPaginas: 1, total: datos.length, datos, ...extra };
+  }
+
+  function pintar(inicial: Pagina<Platillo> = paginaDe([platillo, inactivo])) {
     render(<PlatillosView sucursalId={1} inicial={inicial} guardado={false} />);
   }
 
@@ -552,7 +561,11 @@ describe("PlatillosView", () => {
     expect(m.deshabilitarPlatillo).toHaveBeenCalledWith(10);
   });
 
-  it("filtra por nombre y limpia los filtros con el botón", () => {
+  it("busca en el servidor y limpia los filtros con el botón", async () => {
+    m.listarPlatillos.mockResolvedValueOnce({
+      ok: true,
+      datos: paginaDe([], { totalPaginas: 0 }),
+    });
     pintar();
     const buscador = screen.getByPlaceholderText(
       "Buscar por nombre de platillo...",
@@ -563,29 +576,86 @@ describe("PlatillosView", () => {
 
     fireEvent.change(buscador, { target: { value: "zzz" } });
 
-    expect(screen.getByText("Sin resultados")).toBeTruthy();
+    expect(m.listarPlatillos).not.toHaveBeenCalled();
+    expect(await screen.findByText("Sin resultados")).toBeTruthy();
+    expect(m.listarPlatillos).toHaveBeenCalledWith(1, 1, "zzz");
 
+    m.listarPlatillos.mockResolvedValueOnce({
+      ok: true,
+      datos: paginaDe([platillo, inactivo]),
+    });
     fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
 
+    await waitFor(() =>
+      expect(m.listarPlatillos).toHaveBeenLastCalledWith(1, 1, ""),
+    );
+    await waitFor(() => expect(screen.queryByText("Sin resultados")).toBeNull());
     expect(buscador.value).toBe("");
-    expect(screen.queryByText("Sin resultados")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Limpiar filtros" }),
     ).toBeNull();
   });
 
   it("muestra el estado vacío cuando no hay platillos", () => {
-    pintar([]);
+    pintar(paginaVacia<Platillo>());
 
     expect(screen.getByText("Aún no hay platillos")).toBeTruthy();
   });
 
+  it("no muestra el paginador con una sola página", () => {
+    pintar();
+
+    expect(
+      screen.queryByRole("navigation", { name: "Paginación de platillos" }),
+    ).toBeNull();
+  });
+
+  it("cambia de página con el paginador", async () => {
+    m.listarPlatillos.mockResolvedValue({
+      ok: true,
+      datos: paginaDe([otro], { pagina: 2, totalPaginas: 2, total: 11 }),
+    });
+    pintar(paginaDe([platillo, inactivo], { totalPaginas: 2, total: 11 }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+
+    await waitFor(() =>
+      expect(m.listarPlatillos).toHaveBeenCalledWith(1, 2, ""),
+    );
+    expect((await screen.findAllByText("Sopa de res")).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByRole("button", { name: "Página anterior" })).toBeEnabled();
+  });
+
+  it("si la página ya no existe salta a la última", async () => {
+    m.listarPlatillos
+      .mockResolvedValueOnce({
+        ok: true,
+        datos: paginaDe([], { pagina: 2, totalPaginas: 1, total: 0 }),
+      })
+      .mockResolvedValueOnce({ ok: true, datos: paginaDe([otro]) });
+    pintar(paginaDe([platillo, inactivo], { totalPaginas: 3, total: 25 }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+
+    await waitFor(() =>
+      expect(m.listarPlatillos).toHaveBeenLastCalledWith(1, 1, ""),
+    );
+    expect((await screen.findAllByText("Sopa de res")).length).toBeGreaterThan(
+      0,
+    );
+  });
+
   it("muestra el error inicial y reintenta", async () => {
-    m.listarPlatillos.mockResolvedValue({ ok: true, datos: [platillo] });
+    m.listarPlatillos.mockResolvedValue({
+      ok: true,
+      datos: paginaDe([platillo]),
+    });
     render(
       <PlatillosView
         sucursalId={1}
-        inicial={[]}
+        inicial={paginaVacia<Platillo>()}
         errorInicial="No pudimos completar la operación. Intenta de nuevo."
         guardado={false}
       />,
@@ -593,7 +663,9 @@ describe("PlatillosView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
 
-    await waitFor(() => expect(m.listarPlatillos).toHaveBeenCalledWith(1));
+    await waitFor(() =>
+      expect(m.listarPlatillos).toHaveBeenCalledWith(1, 1, ""),
+    );
     expect(
       (await screen.findAllByText("Pupusa revuelta")).length,
     ).toBeGreaterThan(0);

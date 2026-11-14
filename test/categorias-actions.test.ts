@@ -4,6 +4,7 @@ import {
   crearCategoria,
   deshabilitarCategoria,
   listarCategorias,
+  listarCategoriasActivas,
   renombrarCategoria,
 } from "@/app/actions/categorias";
 import { getSession } from "@/lib/session";
@@ -30,24 +31,53 @@ beforeEach(() => {
 });
 
 describe("acciones de categorías: comunes", () => {
-  it("lista con Bearer y sin cache", async () => {
-    const lista = [
-      {
-        id: 1,
-        nombre: "Entradas",
-        activa: true,
-        deshabilitadaEn: null,
-        platillosActivos: 3,
-      },
-    ];
+  it("lista paginado con Bearer y sin cache", async () => {
+    const lista = {
+      pagina: 1,
+      totalPaginas: 1,
+      total: 1,
+      datos: [
+        {
+          id: 1,
+          nombre: "Entradas",
+          activa: true,
+          deshabilitadaEn: null,
+          platillosActivos: 3,
+        },
+      ],
+    };
     fetchMock.mockResolvedValue(respuesta(lista));
 
     expect(await listarCategorias()).toEqual({ ok: true, datos: lista });
     const [url, opciones] = fetchMock.mock.calls[0];
     expect(url.pathname).toBe("/api/v1/categorias");
+    expect(url.searchParams.get("pagina")).toBe("1");
     expect(opciones.method).toBe("GET");
     expect(opciones.headers.Authorization).toBe("Bearer token-seguro");
     expect(opciones.cache).toBe("no-store");
+  });
+
+  it("pide la página indicada", async () => {
+    fetchMock.mockResolvedValue(
+      respuesta({ pagina: 3, totalPaginas: 3, total: 25, datos: [] }),
+    );
+
+    await listarCategorias(3);
+
+    expect(fetchMock.mock.calls[0][0].searchParams.get("pagina")).toBe("3");
+  });
+
+  it("lista las categorías activas sin paginar", async () => {
+    const activas = [{ id: 1, nombre: "Entradas", activa: true }];
+    fetchMock.mockResolvedValue(respuesta(activas));
+
+    expect(await listarCategoriasActivas()).toEqual({
+      ok: true,
+      datos: activas,
+    });
+    expect(fetchMock.mock.calls[0][0].pathname).toBe(
+      "/api/v1/categorias/activas",
+    );
   });
 
   it("no llama al backend sin sesión", async () => {

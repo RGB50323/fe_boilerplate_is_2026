@@ -138,16 +138,28 @@ describe("DrawerMesas", () => {
 });
 
 describe("ListaPlatillos", () => {
-  it("permite agregar los disponibles y bloquea los agotados", () => {
-    const onAgregar = vi.fn();
+  function pintar(props: Partial<Parameters<typeof ListaPlatillos>[0]> = {}) {
+    const manejadores = {
+      onBuscar: vi.fn(),
+      onCambiarPagina: vi.fn(),
+      onAgregar: vi.fn(),
+    };
     render(
       <ListaPlatillos
         platillos={[hamburguesa, tamal]}
+        pagina={1}
+        totalPaginas={1}
+        cargando={false}
         busqueda=""
-        onBuscar={vi.fn()}
-        onAgregar={onAgregar}
+        {...manejadores}
+        {...props}
       />,
     );
+    return manejadores;
+  }
+
+  it("permite agregar los disponibles y bloquea los agotados", () => {
+    const { onAgregar } = pintar();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Agregar Hamburguesa" }),
@@ -161,15 +173,7 @@ describe("ListaPlatillos", () => {
   });
 
   it("avisa cuando se escribe en la búsqueda", () => {
-    const onBuscar = vi.fn();
-    render(
-      <ListaPlatillos
-        platillos={[hamburguesa]}
-        busqueda=""
-        onBuscar={onBuscar}
-        onAgregar={vi.fn()}
-      />,
-    );
+    const { onBuscar } = pintar({ platillos: [hamburguesa] });
 
     fireEvent.change(screen.getByLabelText("Buscar por nombre de platillo"), {
       target: { value: "ham" },
@@ -179,16 +183,36 @@ describe("ListaPlatillos", () => {
   });
 
   it("muestra el estado vacío sin resultados", () => {
-    render(
-      <ListaPlatillos
-        platillos={[]}
-        busqueda="xyz"
-        onBuscar={vi.fn()}
-        onAgregar={vi.fn()}
-      />,
-    );
+    pintar({ platillos: [], busqueda: "xyz" });
 
     expect(screen.getByText("Sin resultados")).toBeInTheDocument();
+  });
+
+  it("no muestra el paginador con una sola página", () => {
+    pintar();
+
+    expect(
+      screen.queryByRole("navigation", { name: "Paginación de platillos" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("pide la página siguiente desde el paginador", () => {
+    const { onCambiarPagina } = pintar({ pagina: 2, totalPaginas: 3 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+
+    expect(onCambiarPagina).toHaveBeenCalledWith(3);
+  });
+
+  it("bloquea el paginador mientras carga", () => {
+    pintar({ pagina: 2, totalPaginas: 3, cargando: true });
+
+    expect(
+      screen.getByRole("button", { name: "Página anterior" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Página siguiente" }),
+    ).toBeDisabled();
   });
 });
 
