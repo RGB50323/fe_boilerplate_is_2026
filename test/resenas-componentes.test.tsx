@@ -222,6 +222,49 @@ describe("DrawerResenas", () => {
     expect(consultar).toHaveBeenCalledTimes(2);
   });
 
+  it("si la llamada se rechaza muestra el error y permite reintentar", async () => {
+    consultar
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockResolvedValueOnce(pagina(1));
+    render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
+
+    expect(
+      await screen.findByText("No pudimos cargar las reseñas"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Reseñas")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByText("Comentario 1")).toBeInTheDocument();
+    expect(consultar).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignora el rechazo de una solicitud que ya no está vigente", async () => {
+    let rechazar: (e: Error) => void = () => {};
+    consultar
+      .mockImplementationOnce(() => new Promise((_, r) => (rechazar = r)))
+      .mockResolvedValueOnce(pagina(1));
+    const { rerender } = render(
+      <DrawerResenas platillo={platillo} onCerrar={() => {}} />,
+    );
+    rerender(
+      <DrawerResenas
+        platillo={{ id: 9, nombre: "Horchata" }}
+        onCerrar={() => {}}
+      />,
+    );
+    expect(await screen.findByText("Comentario 1")).toBeInTheDocument();
+
+    rechazar(new Error("Failed to fetch"));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(
+      screen.queryByText("No pudimos cargar las reseñas"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Comentario 1")).toBeInTheDocument();
+  });
+
   it("cerrado no consulta", () => {
     render(<DrawerResenas platillo={null} onCerrar={() => {}} />);
     expect(consultar).not.toHaveBeenCalled();

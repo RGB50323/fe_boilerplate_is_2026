@@ -105,18 +105,28 @@ export function DrawerResenas({
   useEffect(() => {
     if (!platillo) return;
     let vigente = true;
-    consultarResenas(platillo.id, pagina).then((resultado) => {
-      if (!vigente) return;
-      // Si la página ya no existe va a la última
-      const ultima = resultado.datos?.totalPaginas ?? 0;
-      if (ultima > 0 && pagina > ultima) {
-        setPagina(ultima);
-        return;
-      }
-      setEstado({ clave, resultado });
-      if (resultado.datos)
-        setUltimos({ id: platillo.id, datos: resultado.datos });
-    });
+    consultarResenas(platillo.id, pagina)
+      .then((resultado) => {
+        if (!vigente) return;
+        // Si la página ya no existe va a la última
+        const ultima = resultado.datos?.totalPaginas ?? 0;
+        if (ultima > 0 && pagina > ultima) {
+          setPagina(ultima);
+          return;
+        }
+        setEstado({ clave, resultado });
+        if (resultado.datos)
+          setUltimos({ id: platillo.id, datos: resultado.datos });
+      })
+      // Falla de red con la Server Action: muestra error con Reintentar
+      .catch(() => {
+        if (vigente) {
+          setEstado({
+            clave,
+            resultado: { error: "No pudimos cargar las reseñas" },
+          });
+        }
+      });
     return () => {
       vigente = false;
     };
