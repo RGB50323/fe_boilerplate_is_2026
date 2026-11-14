@@ -4,6 +4,7 @@ import { consultarResenas } from "@/app/actions/resenas";
 const datos = {
   promedio: 4.6,
   total: 23,
+  distribucion: { 1: 0, 2: 1, 3: 2, 4: 5, 5: 15 },
   pagina: 2,
   totalPaginas: 3,
   resenas: [

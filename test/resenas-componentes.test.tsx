@@ -4,14 +4,20 @@ import { consultarResenas, type ResenasResultado } from "@/app/actions/resenas";
 import { CardPlatillo } from "@/components/menu/card-platillo";
 import { CalificacionPlatillo } from "@/components/resenas/calificacion-platillo";
 import { DrawerResenas } from "@/components/resenas/drawer-resenas";
+import { Estrellas } from "@/components/resenas/estrellas";
 
 vi.mock("@/app/actions/resenas", () => ({ consultarResenas: vi.fn() }));
 const consultar = vi.mocked(consultarResenas);
 
-const resena = (id: number) => ({
+const distribucion = { 1: 0, 2: 1, 3: 2, 4: 5, 5: 15 };
+
+const resena = (
+  id: number,
+  comentario: string | null = `Comentario ${id}`,
+) => ({
   id,
   estrellas: 4,
-  comentario: `Comentario ${id}`,
+  comentario,
   fecha: "2026-10-28",
   cliente: "Ana L.",
 });
@@ -20,6 +26,7 @@ const pagina = (n: number, totalPaginas = 3): ResenasResultado => ({
   datos: {
     promedio: 4.6,
     total: 23,
+    distribucion,
     pagina: n,
     totalPaginas,
     resenas: [resena(n)],
@@ -28,15 +35,26 @@ const pagina = (n: number, totalPaginas = 3): ResenasResultado => ({
 
 const platillo = { id: 7, nombre: "Pupusa revuelta" };
 
+describe("Estrellas", () => {
+  it("rellena parcialmente la estrella del medio punto", () => {
+    const { container } = render(<Estrellas valor={4.5} />);
+    const rellenos = [
+      ...container.querySelectorAll<HTMLElement>("[style]"),
+    ].map((e) => e.style.width);
+    expect(rellenos).toEqual(["100%", "100%", "100%", "100%", "50%"]);
+  });
+});
+
 describe("CalificacionPlatillo", () => {
   it("muestra el promedio con un decimal y el total", () => {
     render(<CalificacionPlatillo promedio={4} total={23} />);
-    expect(screen.getByText("4.0 (23)")).toBeInTheDocument();
+    expect(screen.getByText("4.0")).toBeInTheDocument();
+    expect(screen.getByText("· 23 reseñas")).toBeInTheDocument();
   });
 
   it("sin reseñas lo indica", () => {
     render(<CalificacionPlatillo promedio={null} total={0} />);
-    expect(screen.getByText("Sin reseñas")).toBeInTheDocument();
+    expect(screen.getByText("Sin reseñas aún")).toBeInTheDocument();
   });
 });
 
@@ -50,7 +68,7 @@ describe("CardPlatillo", () => {
     disponibilidad: 4,
   };
 
-  it("muestra la calificación y abre las reseñas", () => {
+  it("la calificación abre las reseñas", () => {
     const onVerResenas = vi.fn();
     render(
       <CardPlatillo
@@ -58,17 +76,18 @@ describe("CardPlatillo", () => {
         onVerResenas={onVerResenas}
       />,
     );
-    expect(screen.getByText("4.6 (23)")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ver reseñas" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Calificación 4.6 de 5, ver 23 reseñas",
+      }),
+    );
     expect(onVerResenas).toHaveBeenCalled();
   });
 
-  it("sin datos de reseñas no muestra calificación ni botón", () => {
+  it("sin datos de reseñas no muestra calificación", () => {
     render(<CardPlatillo platillo={base} />);
-    expect(screen.queryByText("Sin reseñas")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Ver reseñas" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin reseñas aún")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
 
@@ -77,7 +96,7 @@ describe("DrawerResenas", () => {
     consultar.mockReset();
   });
 
-  it("muestra el estado de carga y luego las reseñas", async () => {
+  it("muestra la carga y luego el resumen con distribución y la lista", async () => {
     consultar.mockResolvedValue(pagina(1));
     render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
 
@@ -86,10 +105,23 @@ describe("DrawerResenas", () => {
       "true",
     );
     expect(await screen.findByText("Comentario 1")).toBeInTheDocument();
+    expect(screen.getByText("4.6")).toBeInTheDocument();
+    expect(screen.getByText("23 reseñas")).toBeInTheDocument();
+    expect(screen.getByLabelText("5 estrellas: 15")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 estrella: 0")).toBeInTheDocument();
     expect(screen.getByText("Ana L.")).toBeInTheDocument();
-    expect(screen.getByText("28/10/2026")).toBeInTheDocument();
-    expect(screen.getByText("4.6 (23)")).toBeInTheDocument();
+    expect(screen.getByText("28 oct 2026")).toBeInTheDocument();
     expect(consultar).toHaveBeenCalledWith(7, 1);
+  });
+
+  it("indica cuando una reseña no tiene comentario", async () => {
+    consultar.mockResolvedValue({
+      datos: { ...pagina(1).datos!, resenas: [resena(1, null)] },
+    });
+    render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
+    expect(
+      await screen.findByText("Calificó sin comentario."),
+    ).toBeInTheDocument();
   });
 
   it("pagina y deshabilita Anterior/Siguiente en los extremos", async () => {
@@ -97,14 +129,36 @@ describe("DrawerResenas", () => {
     render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
 
     expect(await screen.findByText("Página 1 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Anterior/ })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(await screen.findByText("Página 2 de 3")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(await screen.findByText("Página 3 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(await screen.findByText("Comentario 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(await screen.findByText("Comentario 3")).toBeInTheDocument();
+    expect(screen.getByText("Página 3 de 3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled();
     expect(consultar).toHaveBeenLastCalledWith(7, 3);
+  });
+
+  it("mientras carga otra página mantiene el resumen visible", async () => {
+    let resolver: (r: ResenasResultado) => void = () => {};
+    consultar
+      .mockResolvedValueOnce(pagina(1))
+      .mockImplementationOnce(() => new Promise((r) => (resolver = r)));
+    render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
+    await screen.findByText("Comentario 1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    expect(screen.getByLabelText("Reseñas")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.getByText("4.6")).toBeInTheDocument();
+    expect(screen.getByText("Página 2 de 3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled();
+
+    resolver(pagina(2));
+    expect(await screen.findByText("Comentario 2")).toBeInTheDocument();
   });
 
   it("no muestra paginación con una sola página", async () => {
@@ -119,6 +173,7 @@ describe("DrawerResenas", () => {
       datos: {
         promedio: null,
         total: 0,
+        distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
         pagina: 1,
         totalPaginas: 0,
         resenas: [],
@@ -155,9 +210,9 @@ describe("DrawerResenas", () => {
     const { rerender } = render(
       <DrawerResenas platillo={platillo} onCerrar={() => {}} />,
     );
-    await screen.findByText("Página 1 de 3");
-    fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
-    await screen.findByText("Página 2 de 3");
+    await screen.findByText("Comentario 1");
+    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    await screen.findByText("Comentario 2");
 
     rerender(
       <DrawerResenas
@@ -165,7 +220,7 @@ describe("DrawerResenas", () => {
         onCerrar={() => {}}
       />,
     );
-    expect(await screen.findByText("Página 1 de 3")).toBeInTheDocument();
+    expect(await screen.findByText("Comentario 1")).toBeInTheDocument();
     expect(consultar).toHaveBeenLastCalledWith(9, 1);
   });
 });

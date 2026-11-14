@@ -48,10 +48,11 @@ export function CardPlatillo({
 
       <h3 className="mt-4 text-2xl">{platillo.nombre}</h3>
       {platillo.totalResenas !== undefined && (
-        <div className="mt-2">
+        <div className="mt-1">
           <CalificacionPlatillo
             promedio={platillo.promedio}
             total={platillo.totalResenas}
+            onClick={onVerResenas}
           />
         </div>
       )}
@@ -59,15 +60,6 @@ export function CardPlatillo({
         <p className="mt-2 max-w-xs text-sm text-zinc-300">
           {platillo.descripcion}
         </p>
-      )}
-      {onVerResenas && (
-        <button
-          type="button"
-          onClick={onVerResenas}
-          className="mt-3 cursor-pointer text-sm text-[#FF7A1A] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400"
-        >
-          Ver reseñas
-        </button>
       )}
     </article>
   );
