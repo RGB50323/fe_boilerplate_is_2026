@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { SearchBar } from "@/components/ui/search-bar";
 import { CardPlatillo } from "@/components/menu/card-platillo";
+import { DrawerResenas } from "@/components/resenas/drawer-resenas";
 import { PlatillosSkeleton } from "@/components/menu/platillos-skeleton";
 import { RangoPrecio } from "@/components/menu/rango-precio";
 import {
@@ -62,6 +63,10 @@ function Menu({
   >([]);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [reintento, setReintento] = useState(0);
+  const [conResenas, setConResenas] = useState<{
+    id: number;
+    nombre: string;
+  } | null>(null);
   const [cerrandoSesion, cerrarSesion] = useTransition();
 
   const errores = validarFiltros(entrada);
@@ -342,13 +347,23 @@ function Menu({
             <ul className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {cat.platillos.map((p) => (
                 <li key={p.id}>
-                  <CardPlatillo platillo={p} />
+                  <CardPlatillo
+                    platillo={p}
+                    onVerResenas={() =>
+                      setConResenas({ id: p.id, nombre: p.nombre })
+                    }
+                  />
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </section>
+
+      <DrawerResenas
+        platillo={conResenas}
+        onCerrar={() => setConResenas(null)}
+      />
     </div>
   );
 }
