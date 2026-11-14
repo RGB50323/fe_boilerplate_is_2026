@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { consultarDisponibilidad } from "@/app/actions/reservaciones";
+import {
+  consultarDisponibilidad,
+  type DisponibilidadResultado,
+} from "@/app/actions/reservaciones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -33,12 +36,14 @@ export function DisponibilidadForm({
   horasIniciales,
   onReservar,
   filtrosIniciales,
+  resultadoInicial,
 }: {
   sucursales: Sucursal[];
   fechaInicial: string;
   horasIniciales: string[];
   onReservar?: (datos: DatosReservacion) => void;
   filtrosIniciales?: FiltrosDisponibilidad;
+  resultadoInicial?: DisponibilidadResultado;
 }) {
   const [filtros, setFiltros] = useState<FiltrosDisponibilidad>(
     filtrosIniciales ?? {
@@ -49,11 +54,21 @@ export function DisponibilidadForm({
     },
   );
   const [horas, setHoras] = useState(horasIniciales);
-  const [errores, setErrores] = useState<ErroresDisponibilidad>({});
-  const [consultado, setConsultado] = useState(false);
-  const [resultado, setResultado] = useState<Resultado>({
-    estado: "inicial",
-    mesas: [],
+  const [errores, setErrores] = useState<ErroresDisponibilidad>(
+    resultadoInicial?.errores ?? {},
+  );
+  const [consultado, setConsultado] = useState(Boolean(resultadoInicial));
+  const [resultado, setResultado] = useState<Resultado>(() => {
+    if (!resultadoInicial) return { estado: "inicial", mesas: [] };
+    if (resultadoInicial.error)
+      return { estado: "error", mesas: [], mensaje: resultadoInicial.error };
+    if (Object.keys(resultadoInicial.errores ?? {}).length)
+      return { estado: "inicial", mesas: [] };
+    return {
+      estado: "listo",
+      mesas: resultadoInicial.mesas,
+      consulta: filtros,
+    };
   });
   const solicitud = useRef(0);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);

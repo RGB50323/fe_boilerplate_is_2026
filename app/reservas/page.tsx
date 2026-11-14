@@ -3,7 +3,10 @@ import { Fraunces } from "next/font/google";
 import { connection } from "next/server";
 import Link from "next/link";
 import { fechaLocal, fechaValida, horasDisponibles } from "@/lib/reservaciones";
-import { listarSucursales } from "@/app/actions/reservaciones";
+import {
+  listarSucursales,
+  consultarDisponibilidad,
+} from "@/app/actions/reservaciones";
 import { DisponibilidadView } from "./disponibilidad-view";
 import { MesaIcon } from "./mesa-icon";
 
@@ -51,6 +54,15 @@ export default async function ReservasPage({
         ? params.personas
         : "4",
   };
+  const resultadoInicial =
+    params.buscar === "1" && sucursal
+      ? await consultarDisponibilidad(
+          Object.entries(filtrosIniciales).reduce((form, [campo, valor]) => {
+            form.set(campo, valor);
+            return form;
+          }, new FormData()),
+        )
+      : undefined;
   return (
     <main
       className={`${fraunces.variable} min-h-dvh bg-[#101012] px-4 pb-16 pt-12 text-zinc-100 [color-scheme:dark] sm:px-8 sm:pt-16 lg:px-12`}
@@ -102,11 +114,16 @@ export default async function ReservasPage({
           </p>
         ) : (
           <DisponibilidadView
-            key={JSON.stringify([sucursales, filtrosIniciales])}
+            key={JSON.stringify([
+              sucursales,
+              filtrosIniciales,
+              resultadoInicial,
+            ])}
             sucursales={sucursales}
             fechaInicial={fecha}
             horasIniciales={horas}
             filtrosIniciales={filtrosIniciales}
+            resultadoInicial={resultadoInicial}
           />
         )}
       </div>

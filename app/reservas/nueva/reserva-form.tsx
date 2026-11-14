@@ -1,6 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import {
+  useContactoReserva,
+  guardarContactoReserva,
+  borrarContactoReserva,
+} from "@/lib/contacto-reserva";
 import { useRef, useState, type FormEvent } from "react";
 import {
   confirmarReservacion,
@@ -35,7 +40,16 @@ export function ReservaForm({
   mesa: MesaDisponible;
   sucursal: Sucursal;
 }) {
-  const [datos, setDatos] = useState(inicial);
+  const contextoInicial = rutaReserva({
+    mesaId: Number(inicial.mesaId),
+    sucursalId: Number(inicial.sucursalId),
+    fecha: inicial.fecha,
+    hora: inicial.hora,
+    personas: Number(inicial.personas),
+  });
+  const contacto = useContactoReserva(contextoInicial);
+  const [cambios, setCambios] = useState<Partial<CamposReserva>>({});
+  const datos = { ...inicial, ...contacto, ...cambios };
   const [errores, setErrores] = useState<ErroresReserva>({});
   const [resultado, setResultado] = useState<ConfirmacionResultado>({});
   const [pendiente, setPendiente] = useState(false);
@@ -57,7 +71,7 @@ export function ReservaForm({
       if (!disponibles.includes(nuevos.hora))
         nuevos.hora = disponibles[0] ?? "";
     }
-    setDatos(nuevos);
+    setCambios(nuevos);
     setErrores({});
     setResultado({});
   }
@@ -75,6 +89,11 @@ export function ReservaForm({
       const form = new FormData();
       Object.entries(datos).forEach(([k, v]) => form.set(k, v));
       const respuesta = await confirmarReservacion(form);
+      if (respuesta.sinSesion && !guardarContactoReserva(siguiente, datos)) {
+        respuesta.error =
+          "Tu sesión expiró. El navegador no permitió conservar tus datos de contacto; copialos antes de iniciar sesión.";
+      }
+      if (respuesta.reserva) borrarContactoReserva();
       setResultado(respuesta);
       setErrores(respuesta.errores ?? {});
     } catch {
@@ -269,7 +288,8 @@ export function ReservaForm({
               <p>{resultado.error}</p>
               {resultado.sinDisponibilidad && (
                 <Link
-                  href={volver}
+                  href={`${volver}&buscar=1`}
+                  prefetch={false}
                   className="mt-3 inline-block text-orange-300 underline"
                 >
                   Elegir otra mesa disponible
