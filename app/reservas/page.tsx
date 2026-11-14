@@ -56,7 +56,9 @@ export default async function ReservasPage({
       className={`${fraunces.variable} min-h-dvh bg-[#101012] px-4 pb-16 pt-12 text-zinc-100 [color-scheme:dark] sm:px-8 sm:pt-16 lg:px-12`}
     >
       <div className="mx-auto max-w-6xl">
-        <div className="mb-7 flex justify-between text-sm text-orange-300">
+        <div
+          className={`${fraunces.className} mb-7 flex justify-between text-sm text-orange-300`}
+        >
           <Link href="/menu">Volver al menú</Link>
           <Link href="/perfil/reservaciones">Mis reservaciones</Link>
         </div>
