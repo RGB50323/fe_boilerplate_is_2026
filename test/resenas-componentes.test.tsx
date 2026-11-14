@@ -129,14 +129,18 @@ describe("DrawerResenas", () => {
     render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
 
     expect(await screen.findByText("Página 1 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Anterior/ })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Página anterior" }),
+    ).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
     expect(await screen.findByText("Comentario 2")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
     expect(await screen.findByText("Comentario 3")).toBeInTheDocument();
     expect(screen.getByText("Página 3 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Página siguiente" }),
+    ).toBeDisabled();
     expect(consultar).toHaveBeenLastCalledWith(7, 3);
   });
 
@@ -148,14 +152,16 @@ describe("DrawerResenas", () => {
     render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
     await screen.findByText("Comentario 1");
 
-    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
     expect(screen.getByLabelText("Reseñas")).toHaveAttribute(
       "aria-busy",
       "true",
     );
     expect(screen.getByText("4.6")).toBeInTheDocument();
     expect(screen.getByText("Página 2 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Página siguiente" }),
+    ).toBeDisabled();
 
     resolver(pagina(2));
     expect(await screen.findByText("Comentario 2")).toBeInTheDocument();
@@ -211,7 +217,7 @@ describe("DrawerResenas", () => {
       <DrawerResenas platillo={platillo} onCerrar={() => {}} />,
     );
     await screen.findByText("Comentario 1");
-    fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
     await screen.findByText("Comentario 2");
 
     rerender(

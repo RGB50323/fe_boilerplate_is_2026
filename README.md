@@ -37,7 +37,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Paginación común
 
-Para listados paginados usa `Paginacion` de `components/ui/paginacion.tsx`. Muestra Anterior / Siguiente y "Página X de Y", y se oculta sola si hay una sola página.
+Para listados paginados usa `Paginacion` de `components/ui/paginacion.tsx`. Muestra flechas de anterior / siguiente con "X de Y" al centro, y se oculta sola si hay una sola página.
 
 ```tsx
 <Paginacion

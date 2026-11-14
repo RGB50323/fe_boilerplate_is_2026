@@ -2,8 +2,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Paginacion } from "@/components/ui/paginacion";
 
-const anterior = () => screen.getByRole("button", { name: /Anterior/ });
-const siguiente = () => screen.getByRole("button", { name: /Siguiente/ });
+const anterior = () => screen.getByRole("button", { name: "Página anterior" });
+const siguiente = () =>
+  screen.getByRole("button", { name: "Página siguiente" });
 
 describe("Paginacion", () => {
   it("en la primera página deshabilita Anterior", () => {
