@@ -17,19 +17,18 @@ export function MarcoReservas({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-dvh bg-[#101012] px-4 py-8 text-zinc-100 [color-scheme:dark] sm:px-8 sm:py-12">
+    <main
+      className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 [color-scheme:dark] sm:px-8`}
+    >
       <div className="mx-auto max-w-4xl">
         <nav
           aria-label="Reservaciones"
-          className="mb-10 flex flex-wrap items-center justify-between gap-4 text-sm"
+          className="mb-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4 text-sm sm:text-base"
         >
-          <Link
-            href="/menu"
-            className={`${fraunces.className} text-2xl text-[#FF7A1A]`}
-          >
+          <Link href="/menu" className="text-2xl text-[#FF7A1A] sm:text-3xl">
             Los Burle
           </Link>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
             <Link
               href="/reservas"
               className="text-zinc-300 hover:text-orange-300"
@@ -45,10 +44,12 @@ export function MarcoReservas({
           </div>
         </nav>
         <header className="mb-8">
-          <h1 className={`${fraunces.className} text-4xl sm:text-5xl`}>
+          <h1 className="text-3xl leading-tight sm:text-4xl lg:text-5xl">
             {titulo}
           </h1>
-          <p className="mt-3 text-zinc-400">{descripcion}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
+            {descripcion}
+          </p>
         </header>
         {children}
       </div>

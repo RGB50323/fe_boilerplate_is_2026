@@ -13,7 +13,9 @@ export function ResumenReserva({ reserva }: { reserva: Reservacion }) {
   return (
     <article className="rounded-2xl border border-zinc-800 bg-[#18181b] p-6 sm:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{reserva.reservacionId}</h2>
+        <h2 className="text-xl font-semibold tabular-nums sm:text-2xl">
+          {reserva.reservacionId}
+        </h2>
         <Badge
           variant={reserva.estado === "CONFIRMADA" ? "success" : "neutral"}
         >
@@ -24,11 +26,13 @@ export function ResumenReserva({ reserva }: { reserva: Reservacion }) {
         {detalles.map(([titulo, valor]) => (
           <div key={titulo}>
             <dt className="text-sm text-zinc-400">{titulo}</dt>
-            <dd className="mt-1 text-lg text-zinc-100">{valor}</dd>
+            <dd className="mt-1 text-base leading-relaxed text-zinc-100 sm:text-lg">
+              {valor}
+            </dd>
           </div>
         ))}
       </dl>
-      <p className="mt-6 border-t border-zinc-800 pt-4 text-xs text-zinc-400">
+      <p className="mt-6 border-t border-zinc-800 pt-4 text-xs leading-relaxed text-zinc-400">
         Duración: 2 horas · Horario de El Salvador
       </p>
     </article>
