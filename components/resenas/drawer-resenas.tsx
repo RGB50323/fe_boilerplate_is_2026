@@ -5,6 +5,7 @@ import { consultarResenas, type ResenasResultado } from "@/app/actions/resenas";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Paginacion } from "@/components/ui/paginacion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatoFecha, type ResenasPlatillo } from "@/lib/resenas";
 import { Estrellas } from "./estrellas";
@@ -13,9 +14,6 @@ import { ResumenResenas } from "./resumen-resenas";
 type PlatilloSeleccionado = { id: number; nombre: string };
 
 type Estado = { clave: string; resultado: ResenasResultado };
-
-const BOTON_PAGINA =
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1 rounded-full border border-zinc-700 px-3 text-sm sm:px-4 text-zinc-100 transition-colors hover:border-[#FF7A1A] hover:text-[#FF7A1A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-600 disabled:hover:border-zinc-800 disabled:hover:text-zinc-600";
 
 function ResenasSkeleton() {
   return (
@@ -178,35 +176,14 @@ export function DrawerResenas({
               <ListaResenas datos={datos} />
             </div>
 
-            {datos.totalPaginas > 1 && (
-              <nav
-                aria-label="Paginación de reseñas"
-                className="mt-4 flex items-center justify-between gap-2 border-t border-zinc-800 pt-4"
-              >
-                <button
-                  type="button"
-                  className={BOTON_PAGINA}
-                  disabled={cargando || pagina <= 1}
-                  onClick={() => irA(pagina - 1)}
-                >
-                  <span aria-hidden="true">‹</span> Anterior
-                </button>
-                <span
-                  aria-live="polite"
-                  className="whitespace-nowrap text-sm text-zinc-400"
-                >
-                  Página {pagina} de {datos.totalPaginas}
-                </span>
-                <button
-                  type="button"
-                  className={BOTON_PAGINA}
-                  disabled={cargando || pagina >= datos.totalPaginas}
-                  onClick={() => irA(pagina + 1)}
-                >
-                  Siguiente <span aria-hidden="true">›</span>
-                </button>
-              </nav>
-            )}
+            <Paginacion
+              pagina={pagina}
+              totalPaginas={datos.totalPaginas}
+              onCambiar={irA}
+              deshabilitado={cargando}
+              etiqueta="Paginación de reseñas"
+              className="mt-4 border-t border-zinc-800 pt-4"
+            />
           </>
         )}
       </section>
