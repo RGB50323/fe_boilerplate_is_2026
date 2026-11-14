@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   deshabilitarPlatillo,
   habilitarPlatillo,
@@ -11,24 +11,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Paginacion } from "@/components/ui/paginacion";
 import { Toast } from "@/components/ui/toast";
+import type { Pagina } from "@/lib/paginacion";
 import type { Platillo } from "@/lib/platillos";
 import { TablaPlatillos } from "@/components/platillos/tabla-platillos";
 import { DialogoDeshabilitarPlatillo } from "@/components/platillos/dialogo-deshabilitar-platillo";
 
 type Aviso = { id: number; texto: string; variante: "success" | "error" };
 
+const ESPERA_BUSQUEDA_MS = 300;
+
 const BOTON_PRIMARIO =
   "cursor-pointer rounded-full bg-[#FF7A1A] px-5 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
 const BOTON_SECUNDARIO =
   "cursor-pointer rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
-
-function normalizar(texto: string) {
-  return texto
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
 
 export function PlatillosView({
   sucursalId,
@@ -37,12 +34,14 @@ export function PlatillosView({
   guardado,
 }: {
   sucursalId: number;
-  inicial: Platillo[];
+  inicial: Pagina<Platillo>;
   errorInicial?: string;
   guardado: boolean;
 }) {
   const router = useRouter();
-  const [platillos, setPlatillos] = useState(inicial);
+  const [lista, setLista] = useState(inicial);
+  const [consulta, setConsulta] = useState("");
+  const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(errorInicial);
   const [aviso, setAviso] = useState<Aviso | null>(
     guardado
@@ -52,20 +51,58 @@ export function PlatillosView({
   const [aDeshabilitar, setADeshabilitar] = useState<Platillo | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [habilitando, setHabilitando] = useState<number | null>(null);
+  const solicitud = useRef(0);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (guardado) router.replace("/admin/platillos");
   }, [guardado, router]);
 
-  async function refrescar() {
-    const resultado = await listarPlatillos(sucursalId);
-    if (resultado.ok) {
-      setPlatillos(resultado.datos);
-      setError(undefined);
+  useEffect(() => () => clearTimeout(temporizador.current), []);
+
+  async function cargar(pagina: number, texto: string) {
+    const id = ++solicitud.current;
+    setCargando(true);
+    const resultado = await listarPlatillos(sucursalId, pagina, texto);
+    if (id !== solicitud.current) return;
+    setCargando(false);
+    if (!resultado.ok) {
+      if (resultado.sinSesion) router.replace("/login");
+      setError(resultado.error);
       return;
     }
-    if (resultado.sinSesion) router.replace("/login");
-    setError(resultado.error);
+    const { totalPaginas } = resultado.datos;
+    if (totalPaginas > 0 && pagina > totalPaginas) {
+      await cargar(totalPaginas, texto);
+      return;
+    }
+    setLista(resultado.datos);
+    setConsulta(texto);
+    setError(undefined);
+  }
+
+  function buscar(texto: string) {
+    setBusqueda(texto);
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(
+      () => void cargar(1, texto.trim()),
+      ESPERA_BUSQUEDA_MS,
+    );
+  }
+
+  function limpiar() {
+    clearTimeout(temporizador.current);
+    setBusqueda("");
+    void cargar(1, "");
+  }
+
+  function actualizarActivo(id: number, activo: boolean) {
+    setLista((actual) => ({
+      ...actual,
+      datos: actual.datos.map((p) => (p.id === id ? { ...p, activo } : p)),
+    }));
   }
 
   async function deshabilitar() {
@@ -75,10 +112,7 @@ export function PlatillosView({
       if (resultado.sinSesion) router.replace("/login");
       return resultado.error;
     }
-    const id = aDeshabilitar.id;
-    setPlatillos((actuales) =>
-      actuales.map((p) => (p.id === id ? { ...p, activo: false } : p)),
-    );
+    actualizarActivo(aDeshabilitar.id, false);
     setADeshabilitar(null);
     setAviso({
       id: Date.now(),
@@ -98,20 +132,13 @@ export function PlatillosView({
       setAviso({ id: Date.now(), texto: resultado.error, variante: "error" });
       return;
     }
-    setPlatillos((actuales) =>
-      actuales.map((p) => (p.id === platillo.id ? { ...p, activo: true } : p)),
-    );
+    actualizarActivo(platillo.id, true);
     setAviso({
       id: Date.now(),
       texto: "Platillo habilitado correctamente",
       variante: "success",
     });
   }
-
-  const filtro = normalizar(busqueda.trim());
-  const visibles = platillos.filter((p) =>
-    normalizar(p.nombre).includes(filtro),
-  );
 
   return (
     <main className="py-8">
@@ -136,16 +163,12 @@ export function PlatillosView({
             id="buscar-platillo"
             type="search"
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onChange={(e) => buscar(e.target.value)}
             placeholder="Buscar por nombre de platillo..."
           />
         </div>
         {busqueda && (
-          <button
-            type="button"
-            onClick={() => setBusqueda("")}
-            className={BOTON_PRIMARIO}
-          >
+          <button type="button" onClick={limpiar} className={BOTON_PRIMARIO}>
             Limpiar filtros
           </button>
         )}
@@ -153,25 +176,40 @@ export function PlatillosView({
 
       {error ? (
         <EmptyState mensaje={error} variante="error">
-          <Button onClick={() => void refrescar()}>Reintentar</Button>
+          <Button onClick={() => void cargar(lista.pagina, consulta)}>
+            Reintentar
+          </Button>
         </EmptyState>
-      ) : platillos.length === 0 ? (
+      ) : lista.total === 0 && consulta === "" ? (
         <EmptyState
           mensaje="Aún no hay platillos"
           descripcion="Agrega el primero con el botón Agregar platillo."
         />
-      ) : visibles.length === 0 ? (
+      ) : lista.datos.length === 0 ? (
         <EmptyState
           mensaje="Sin resultados"
           descripcion="Ningún platillo coincide con la búsqueda."
         />
       ) : (
-        <TablaPlatillos
-          platillos={visibles}
-          habilitando={habilitando}
-          onDeshabilitar={setADeshabilitar}
-          onHabilitar={(p) => void habilitar(p)}
-        />
+        <div
+          aria-busy={cargando}
+          className={`transition-opacity duration-200 motion-reduce:transition-none ${cargando ? "opacity-40" : ""}`}
+        >
+          <TablaPlatillos
+            platillos={lista.datos}
+            habilitando={habilitando}
+            onDeshabilitar={setADeshabilitar}
+            onHabilitar={(p) => void habilitar(p)}
+          />
+          <Paginacion
+            pagina={lista.pagina}
+            totalPaginas={lista.totalPaginas}
+            onCambiar={(pagina) => void cargar(pagina, consulta)}
+            deshabilitado={cargando}
+            etiqueta="Paginación de platillos"
+            className="mt-6"
+          />
+        </div>
       )}
 
       <DialogoDeshabilitarPlatillo

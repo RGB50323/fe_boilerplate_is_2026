@@ -8,11 +8,11 @@ import {
 import { FieldError } from "@/components/ui/error";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
-import type { Categoria, PlatilloDeCategoria } from "@/lib/categorias";
+import type { DestinoCategoria, Categoria, PlatilloDeCategoria } from "@/lib/categorias";
 
 type Props = {
   categoria: Categoria | null;
-  destinos: Categoria[];
+  destinos: DestinoCategoria[];
   onCerrar: () => void;
   onCambio: () => void;
 };

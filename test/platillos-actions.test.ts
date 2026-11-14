@@ -6,6 +6,7 @@ import {
   editarPlatillo,
   habilitarPlatillo,
   listarPlatillos,
+  obtenerPlatillo,
   subirImagenPlatillo,
 } from "@/app/actions/platillos";
 import { IMAGEN_MAX_BYTES, type ValoresPlatillo } from "@/lib/platillos";
@@ -35,6 +36,13 @@ const platilloApi = {
   precio: 1.25,
   disponibilidad: 40,
   activo: true,
+};
+
+const paginaApi = {
+  pagina: 1,
+  totalPaginas: 1,
+  total: 1,
+  datos: [platilloApi],
 };
 
 function respuesta(status: number, cuerpo: unknown = {}) {
@@ -70,36 +78,63 @@ afterEach(() => {
 });
 
 describe("listarPlatillos", () => {
-  it("devuelve los platillos con la URL completa de la imagen", async () => {
-    fetchMock.mockResolvedValue(respuesta(200, [platilloApi]));
+  it("devuelve la página con la URL completa de la imagen", async () => {
+    fetchMock.mockResolvedValue(respuesta(200, paginaApi));
 
     const resultado = await listarPlatillos(1);
 
     expect(resultado).toEqual({
       ok: true,
-      datos: [
-        {
-          ...platilloApi,
-          imagenSrc: "http://api.test/uploads/platillos/p.png",
-        },
-      ],
+      datos: {
+        pagina: 1,
+        totalPaginas: 1,
+        total: 1,
+        datos: [
+          {
+            ...platilloApi,
+            imagenSrc: "http://api.test/uploads/platillos/p.png",
+          },
+        ],
+      },
     });
     expect(String(fetchMock.mock.calls[0][0])).toBe(
-      `${API}/sucursales/1/platillos`,
+      `${API}/sucursales/1/platillos?pagina=1`,
     );
     expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
       "Bearer token-123",
     );
   });
 
+  it("envía la página y la búsqueda recortada", async () => {
+    fetchMock.mockResolvedValue(respuesta(200, { ...paginaApi, pagina: 2 }));
+
+    await listarPlatillos(1, 2, "  pupusa ");
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.searchParams.get("pagina")).toBe("2");
+    expect(url.searchParams.get("q")).toBe("pupusa");
+  });
+
+  it("no envía la búsqueda si está vacía", async () => {
+    fetchMock.mockResolvedValue(respuesta(200, paginaApi));
+
+    await listarPlatillos(1, 1, "   ");
+
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.searchParams.has("q")).toBe(false);
+  });
+
   it("deja imagenSrc en null cuando el platillo no tiene imagen", async () => {
     fetchMock.mockResolvedValue(
-      respuesta(200, [{ ...platilloApi, imagenUrl: null }]),
+      respuesta(200, {
+        ...paginaApi,
+        datos: [{ ...platilloApi, imagenUrl: null }],
+      }),
     );
 
     const resultado = await listarPlatillos(1);
 
-    expect(resultado.ok && resultado.datos[0].imagenSrc).toBeNull();
+    expect(resultado.ok && resultado.datos.datos[0].imagenSrc).toBeNull();
   });
 
   it("no consulta al backend si no hay sesión", async () => {
@@ -145,6 +180,41 @@ describe("listarPlatillos", () => {
     expect(await listarPlatillos(1)).toEqual({
       ok: false,
       error: "No pudimos completar la operación. Intenta de nuevo.",
+    });
+  });
+});
+
+describe("obtenerPlatillo", () => {
+  it("devuelve el platillo con la URL completa de la imagen", async () => {
+    fetchMock.mockResolvedValue(respuesta(200, platilloApi));
+
+    const resultado = await obtenerPlatillo(10);
+
+    expect(resultado).toEqual({
+      ok: true,
+      datos: {
+        ...platilloApi,
+        imagenSrc: "http://api.test/uploads/platillos/p.png",
+      },
+    });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(`${API}/platillos/10`);
+  });
+
+  it("traduce el 404", async () => {
+    fetchMock.mockResolvedValue(respuesta(404));
+
+    expect(await obtenerPlatillo(99)).toEqual({
+      ok: false,
+      error: "El platillo no existe.",
+    });
+  });
+
+  it("marca sinSesion con 401", async () => {
+    fetchMock.mockResolvedValue(respuesta(401));
+
+    expect(await obtenerPlatillo(10)).toMatchObject({
+      ok: false,
+      sinSesion: true,
     });
   });
 });
@@ -276,10 +346,7 @@ describe("habilitarPlatillo", () => {
   it.each([
     [404, "El platillo o su categoría ya no existe."],
     [409, "El platillo ya está habilitado."],
-    [
-      422,
-      "La categoría del platillo está deshabilitada. Habilítala primero.",
-    ],
+    [422, "La categoría del platillo está deshabilitada. Habilítala primero."],
   ])("traduce el %i", async (status, mensaje) => {
     fetchMock.mockResolvedValue(respuesta(status));
 
@@ -327,9 +394,10 @@ describe("subirImagenPlatillo", () => {
   });
 
   it("rechaza formatos que no son JPG ni PNG sin llamar al backend", async () => {
-    expect(
-      await subirImagenPlatillo(formulario(imagen("image/gif"))),
-    ).toEqual({ ok: false, error: "La imagen debe ser JPG o PNG." });
+    expect(await subirImagenPlatillo(formulario(imagen("image/gif")))).toEqual({
+      ok: false,
+      error: "La imagen debe ser JPG o PNG.",
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { listarCategorias } from "@/app/actions/categorias";
+import { listarCategoriasActivas } from "@/app/actions/categorias";
 import { FormularioPlatillo } from "@/components/platillos/formulario-platillo";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 
@@ -15,11 +15,9 @@ export default async function NuevoPlatilloPage() {
     redirect("/menu");
   }
 
-  const resultado = await listarCategorias();
+  const resultado = await listarCategoriasActivas();
   const categorias = resultado.ok
-    ? resultado.datos
-        .filter((categoria) => categoria.activa)
-        .map(({ id, nombre }) => ({ id, nombre }))
+    ? resultado.datos.map(({ id, nombre }) => ({ id, nombre }))
     : [];
 
   return (

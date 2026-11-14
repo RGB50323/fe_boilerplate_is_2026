@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Pagina } from "@/lib/paginacion";
 import type { Mesa } from "@/lib/pedidos";
 import type { Platillo } from "@/lib/platillos";
 import { PedidoView } from "@/app/mesero/pedidos/pedido-view";
@@ -34,11 +35,14 @@ const base: Platillo = {
   disponibilidad: 19,
   activo: true,
 };
-const platillos: Platillo[] = [
-  base,
-  { ...base, id: 2, nombre: "Tamal", disponibilidad: 0 },
-  { ...base, id: 3, nombre: "Pupusa vieja", activo: false },
-];
+const tamal: Platillo = { ...base, id: 2, nombre: "Tamal", disponibilidad: 0 };
+const sopa: Platillo = {
+  ...base,
+  id: 4,
+  nombre: "Sopa de res",
+  precio: 5,
+};
+const platillos: Platillo[] = [base, tamal];
 const mesas: Mesa[] = [
   {
     id: 3,
@@ -58,11 +62,18 @@ const mesas: Mesa[] = [
   },
 ];
 
-function renderizar() {
+function paginaDe(
+  datos: Platillo[],
+  extra: Partial<Pagina<Platillo>> = {},
+): Pagina<Platillo> {
+  return { pagina: 1, totalPaginas: 1, total: datos.length, datos, ...extra };
+}
+
+function renderizar(inicial: Pagina<Platillo> = paginaDe(platillos)) {
   render(
     <PedidoView
       sucursalId={1}
-      platillosIniciales={platillos}
+      platillosIniciales={inicial}
       mesasIniciales={mesas}
     />,
   );
@@ -80,11 +91,14 @@ beforeEach(() => {
   mocks.listarMesas.mockReset();
   mocks.listarPlatillos.mockReset();
   mocks.listarMesas.mockResolvedValue({ ok: true, datos: mesas });
-  mocks.listarPlatillos.mockResolvedValue({ ok: true, datos: platillos });
+  mocks.listarPlatillos.mockResolvedValue({
+    ok: true,
+    datos: paginaDe(platillos),
+  });
 });
 
 describe("PedidoView", () => {
-  it("muestra solo los platillos activos y marca los agotados", () => {
+  it("muestra los platillos y marca los agotados", () => {
     renderizar();
 
     expect(
@@ -93,18 +107,48 @@ describe("PedidoView", () => {
     expect(
       screen.getByRole("button", { name: "Tamal agotado" }),
     ).toBeDisabled();
-    expect(screen.queryByText("Pupusa vieja")).not.toBeInTheDocument();
   });
 
-  it("filtra los platillos por nombre", () => {
+  it("busca los platillos en el servidor", async () => {
+    mocks.listarPlatillos.mockResolvedValue({
+      ok: true,
+      datos: paginaDe([tamal]),
+    });
     renderizar();
 
     fireEvent.change(screen.getByLabelText("Buscar por nombre de platillo"), {
-      target: { value: "TAMAL" },
+      target: { value: "  TAMAL " },
     });
 
-    expect(screen.queryByText("Hamburguesa")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.listarPlatillos).toHaveBeenCalledWith(1, 1, "TAMAL"),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Hamburguesa")).not.toBeInTheDocument(),
+    );
     expect(screen.getByText("Tamal")).toBeInTheDocument();
+  });
+
+  it("conserva el pedido al cambiar de página", async () => {
+    mocks.listarPlatillos.mockResolvedValue({
+      ok: true,
+      datos: paginaDe([sopa], { pagina: 2, totalPaginas: 2, total: 3 }),
+    });
+    renderizar(paginaDe(platillos, { totalPaginas: 2, total: 3 }));
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Agregar Hamburguesa" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+
+    await waitFor(() =>
+      expect(mocks.listarPlatillos).toHaveBeenCalledWith(1, 2, ""),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Agregar Sopa de res" }),
+    );
+
+    expect(screen.getByText("Total: $ 13.99")).toBeInTheDocument();
   });
 
   it("arma el resumen con el total", () => {
@@ -158,6 +202,9 @@ describe("PedidoView", () => {
       screen.getByText("Agrega platillos para armar el pedido."),
     ).toBeInTheDocument();
     await waitFor(() => expect(mocks.listarMesas).toHaveBeenCalledWith(1));
+    await waitFor(() =>
+      expect(mocks.listarPlatillos).toHaveBeenCalledWith(1, 1, ""),
+    );
   });
 
   it("muestra el error del servidor y conserva el pedido", async () => {

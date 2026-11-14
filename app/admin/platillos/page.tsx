@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { listarPlatillos } from "@/app/actions/platillos";
+import { paginaVacia } from "@/lib/paginacion";
+import type { Platillo } from "@/lib/platillos";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 import { PlatillosView } from "./platillos-view";
 
@@ -27,7 +29,7 @@ export default async function PlatillosPage({
   return (
     <PlatillosView
       sucursalId={usuario.sucursalId}
-      inicial={resultado.ok ? resultado.datos : []}
+      inicial={resultado.ok ? resultado.datos : paginaVacia<Platillo>()}
       errorInicial={resultado.ok ? undefined : resultado.error}
       guardado={guardado === "1"}
     />

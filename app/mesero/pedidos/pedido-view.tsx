@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { crearPedido, listarMesas } from "@/app/actions/pedidos";
 import { listarPlatillos } from "@/app/actions/platillos";
 import { DrawerMesas } from "@/components/pedidos/drawer-mesas";
@@ -9,15 +9,13 @@ import { ListaPlatillos } from "@/components/pedidos/lista-platillos";
 import { ResumenPedido } from "@/components/pedidos/resumen-pedido";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Toast } from "@/components/ui/toast";
-import {
-  itemsParaEnviar,
-  normalizarTexto,
-  type LineaPedido,
-  type Mesa,
-} from "@/lib/pedidos";
+import { itemsParaEnviar, type LineaPedido, type Mesa } from "@/lib/pedidos";
+import type { Pagina } from "@/lib/paginacion";
 import type { Platillo } from "@/lib/platillos";
 
 type Aviso = { id: number; texto: string; variante: "success" | "error" };
+
+const ESPERA_BUSQUEDA_MS = 300;
 
 const BOTON_PRIMARIO =
   "cursor-pointer rounded-full bg-[#FF7A1A] px-5 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400";
@@ -29,12 +27,14 @@ export function PedidoView({
   errorInicial,
 }: {
   sucursalId: number;
-  platillosIniciales: Platillo[];
+  platillosIniciales: Pagina<Platillo>;
   mesasIniciales: Mesa[];
   errorInicial?: string;
 }) {
   const router = useRouter();
   const [platillos, setPlatillos] = useState(platillosIniciales);
+  const [consulta, setConsulta] = useState("");
+  const [cargando, setCargando] = useState(false);
   const [mesas, setMesas] = useState(mesasIniciales);
   const [mesa, setMesa] = useState<Mesa | null>(null);
   const [lineas, setLineas] = useState<LineaPedido[]>([]);
@@ -42,6 +42,12 @@ export function PedidoView({
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState<Aviso | null>(null);
+  const solicitud = useRef(0);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+
+  useEffect(() => () => clearTimeout(temporizador.current), []);
 
   function avisar(texto: string, variante: Aviso["variante"]) {
     setAviso({ id: Date.now(), texto, variante });
@@ -85,13 +91,41 @@ export function PedidoView({
     );
   }
 
+  async function cargarPlatillos(pagina: number, texto: string) {
+    const id = ++solicitud.current;
+    setCargando(true);
+    const resultado = await listarPlatillos(sucursalId, pagina, texto);
+    if (id !== solicitud.current) return;
+    setCargando(false);
+    if (!resultado.ok) {
+      if (resultado.sinSesion) router.replace("/login");
+      avisar(resultado.error, "error");
+      return;
+    }
+    const { totalPaginas } = resultado.datos;
+    if (totalPaginas > 0 && pagina > totalPaginas) {
+      await cargarPlatillos(totalPaginas, texto);
+      return;
+    }
+    setPlatillos(resultado.datos);
+    setConsulta(texto);
+  }
+
+  function buscar(texto: string) {
+    setBusqueda(texto);
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(
+      () => void cargarPlatillos(1, texto.trim()),
+      ESPERA_BUSQUEDA_MS,
+    );
+  }
+
   async function refrescar() {
-    const [resMesas, resPlatillos] = await Promise.all([
+    const [resMesas] = await Promise.all([
       listarMesas(sucursalId),
-      listarPlatillos(sucursalId),
+      cargarPlatillos(platillos.pagina, consulta),
     ]);
     if (resMesas.ok) setMesas(resMesas.datos);
-    if (resPlatillos.ok) setPlatillos(resPlatillos.datos);
   }
 
   async function enviar() {
@@ -118,11 +152,6 @@ export function PedidoView({
     await refrescar();
   }
 
-  const filtro = normalizarTexto(busqueda.trim());
-  const visibles = platillos.filter(
-    (p) => p.activo && normalizarTexto(p.nombre).includes(filtro),
-  );
-
   return (
     <main className="py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -143,9 +172,13 @@ export function PedidoView({
       ) : (
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <ListaPlatillos
-            platillos={visibles}
+            platillos={platillos.datos}
+            pagina={platillos.pagina}
+            totalPaginas={platillos.totalPaginas}
+            cargando={cargando}
             busqueda={busqueda}
-            onBuscar={setBusqueda}
+            onBuscar={buscar}
+            onCambiarPagina={(pagina) => void cargarPlatillos(pagina, consulta)}
             onAgregar={agregar}
           />
           <ResumenPedido

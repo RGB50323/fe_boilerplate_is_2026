@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { listarCategorias } from "@/app/actions/categorias";
+import { listarCategoriasActivas } from "@/app/actions/categorias";
+import { obtenerPlatillo } from "@/app/actions/platillos";
 import { FormularioPlatillo } from "@/components/platillos/formulario-platillo";
+import { PLATILLO_NO_EXISTE } from "@/lib/platillos";
 import { obtenerUsuarioActual } from "@/lib/usuario";
-import { listarPlatillos } from "@/app/actions/platillos";
 
 export const metadata: Metadata = {
   title: "Editar platillo | Los Burle",
@@ -24,30 +25,36 @@ export default async function EditarPlatilloPage({
     redirect("/menu");
   }
 
-  const [platillos, categorias] = await Promise.all([
-    listarPlatillos(usuario.sucursalId),
-    listarCategorias(),
+  const [resultado, categorias] = await Promise.all([
+    obtenerPlatillo(platilloId),
+    listarCategoriasActivas(),
   ]);
 
-  if (!platillos.ok) {
-    if (platillos.sinSesion) redirect("/login");
+  if (!resultado.ok) {
+    if (resultado.sinSesion) redirect("/login");
+    if (resultado.error === PLATILLO_NO_EXISTE) notFound();
     return (
       <main className="py-8">
         <p role="alert" className="text-red-400">
-          {platillos.error}
+          {resultado.error}
         </p>
       </main>
     );
   }
 
-  const platillo = platillos.datos.find((p) => p.id === platilloId);
-  if (!platillo) notFound();
-
-  const opciones = categorias.ok
-    ? categorias.datos
-        .filter((c) => c.activa || c.id === platillo.categoriaId)
-        .map(({ id: categoriaId, nombre }) => ({ id: categoriaId, nombre }))
-    : [{ id: platillo.categoriaId, nombre: platillo.categoriaNombre }];
+  const platillo = resultado.datos;
+  const activas = categorias.ok
+    ? categorias.datos.map(({ id: categoriaId, nombre }) => ({
+        id: categoriaId,
+        nombre,
+      }))
+    : [];
+  const opciones = activas.some((c) => c.id === platillo.categoriaId)
+    ? activas
+    : [
+        ...activas,
+        { id: platillo.categoriaId, nombre: platillo.categoriaNombre },
+      ];
 
   return (
     <main className="py-8">

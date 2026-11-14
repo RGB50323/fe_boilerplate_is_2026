@@ -8,6 +8,7 @@ import {
   crearCategoria,
   deshabilitarCategoria,
   listarCategorias,
+  listarCategoriasActivas,
   renombrarCategoria,
 } from "@/app/actions/categorias";
 import { DialogoDeshabilitar } from "@/components/categorias/dialogo-deshabilitar";
@@ -16,8 +17,10 @@ import { PanelPlatillos } from "@/components/categorias/panel-platillos";
 import { TablaCategorias } from "@/components/categorias/tabla-categorias";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Paginacion } from "@/components/ui/paginacion";
 import { Toast } from "@/components/ui/toast";
-import type { Categoria } from "@/lib/categorias";
+import type { Categoria, DestinoCategoria } from "@/lib/categorias";
+import type { Pagina } from "@/lib/paginacion";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -29,13 +32,17 @@ type Aviso = { id: number; texto: string; variante: "success" | "error" };
 
 export function CategoriasView({
   inicial,
+  destinosIniciales,
   errorInicial,
 }: {
-  inicial: Categoria[];
+  inicial: Pagina<Categoria>;
+  destinosIniciales: DestinoCategoria[];
   errorInicial?: string;
 }) {
   const router = useRouter();
-  const [categorias, setCategorias] = useState(inicial);
+  const [lista, setLista] = useState(inicial);
+  const [destinos, setDestinos] = useState(destinosIniciales);
+  const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(errorInicial);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [formulario, setFormulario] = useState<{
@@ -48,15 +55,26 @@ export function CategoriasView({
     setAviso({ id: Date.now(), texto, variante });
   }
 
-  async function refrescar() {
-    const resultado = await listarCategorias();
-    if (resultado.ok) {
-      setCategorias(resultado.datos);
-      setError(undefined);
+  async function cargar(pagina: number) {
+    setCargando(true);
+    const [resultado, activas] = await Promise.all([
+      listarCategorias(pagina),
+      listarCategoriasActivas(),
+    ]);
+    setCargando(false);
+    if (!resultado.ok) {
+      if (resultado.sinSesion) router.replace("/login");
+      setError(resultado.error);
       return;
     }
-    if (resultado.sinSesion) router.replace("/login");
-    setError(resultado.error);
+    const { totalPaginas } = resultado.datos;
+    if (totalPaginas > 0 && pagina > totalPaginas) {
+      await cargar(totalPaginas);
+      return;
+    }
+    setLista(resultado.datos);
+    if (activas.ok) setDestinos(activas.datos);
+    setError(undefined);
   }
 
   async function guardar(nombre: string) {
@@ -69,7 +87,7 @@ export function CategoriasView({
     }
     setFormulario(null);
     mostrar("Categoría guardada correctamente", "success");
-    await refrescar();
+    await cargar(lista.pagina);
     return undefined;
   }
 
@@ -82,7 +100,7 @@ export function CategoriasView({
     }
     setADeshabilitar(null);
     mostrar("Categoría deshabilitada correctamente", "success");
-    await refrescar();
+    await cargar(lista.pagina);
     return undefined;
   }
 
@@ -128,20 +146,35 @@ export function CategoriasView({
 
         {error ? (
           <EmptyState mensaje={error} variante="error">
-            <Button onClick={() => void refrescar()}>Reintentar</Button>
+            <Button onClick={() => void cargar(lista.pagina)}>
+              Reintentar
+            </Button>
           </EmptyState>
-        ) : categorias.length === 0 ? (
+        ) : lista.total === 0 ? (
           <EmptyState
             mensaje="Aún no hay categorías"
             descripcion="Agrega la primera con el botón Agregar categoría."
           />
         ) : (
-          <TablaCategorias
-            categorias={categorias}
-            onVer={setVerPlatillos}
-            onRenombrar={(categoria) => setFormulario({ categoria })}
-            onDeshabilitar={setADeshabilitar}
-          />
+          <div
+            aria-busy={cargando}
+            className={`transition-opacity duration-200 motion-reduce:transition-none ${cargando ? "opacity-40" : ""}`}
+          >
+            <TablaCategorias
+              categorias={lista.datos}
+              onVer={setVerPlatillos}
+              onRenombrar={(categoria) => setFormulario({ categoria })}
+              onDeshabilitar={setADeshabilitar}
+            />
+            <Paginacion
+              pagina={lista.pagina}
+              totalPaginas={lista.totalPaginas}
+              onCambiar={(pagina) => void cargar(pagina)}
+              deshabilitado={cargando}
+              etiqueta="Paginación de categorías"
+              className="mt-6"
+            />
+          </div>
         )}
       </div>
 
@@ -158,9 +191,9 @@ export function CategoriasView({
       />
       <PanelPlatillos
         categoria={verPlatillos}
-        destinos={categorias.filter((categoria) => categoria.activa)}
+        destinos={destinos}
         onCerrar={() => setVerPlatillos(null)}
-        onCambio={() => void refrescar()}
+        onCambio={() => void cargar(lista.pagina)}
       />
 
       <Toast key={aviso?.id} variant={aviso?.variante}>
