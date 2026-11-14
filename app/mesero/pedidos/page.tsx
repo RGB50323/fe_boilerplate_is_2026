@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { listarMesas } from "@/app/actions/pedidos";
 import { listarPlatillos } from "@/app/actions/platillos";
+import { paginaVacia } from "@/lib/paginacion";
+import type { Platillo } from "@/lib/platillos";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 import { PedidoView } from "./pedido-view";
 
@@ -36,7 +38,7 @@ export default async function PedidoPage() {
   return (
     <PedidoView
       sucursalId={usuario.sucursalId}
-      platillosIniciales={platillos.ok ? platillos.datos : []}
+      platillosIniciales={platillos.ok ? platillos.datos : paginaVacia<Platillo>()}
       mesasIniciales={mesas.ok ? mesas.datos : []}
       errorInicial={error}
     />

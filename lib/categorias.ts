@@ -10,6 +10,8 @@ export type CategoriaGuardada = { id: number; nombre: string; activa: boolean };
 
 export type PlatilloDeCategoria = { id: number; nombre: string };
 
+export type DestinoCategoria = { id: number; nombre: string };
+
 export const NOMBRE_MAX = 50;
 
 export function validarNombre(nombre: string): string | undefined {

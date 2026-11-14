@@ -7,6 +7,7 @@ import {
   type CategoriaGuardada,
   type PlatilloDeCategoria,
 } from "@/lib/categorias";
+import { Pagina } from "@/lib/paginacion";
 
 export type { Resultado };
 
@@ -16,8 +17,12 @@ const MENSAJES_NOMBRE = {
   409: "Ya existe una categoría con ese nombre.",
 };
 
-export async function listarCategorias() {
-  return llamar<Categoria[]>("categorias");
+export async function listarCategorias(pagina = 1) {
+  return llamar<Pagina<Categoria>>(`categorias?pagina=${pagina}`);
+}
+
+export async function listarCategoriasActivas() {
+  return llamar<CategoriaGuardada[]>("categorias/activas");
 }
 
 export async function crearCategoria(

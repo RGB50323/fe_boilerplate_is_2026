@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { listarCategorias } from "@/app/actions/categorias";
+import {
+  listarCategorias,
+  listarCategoriasActivas,
+} from "@/app/actions/categorias";
+import type { Categoria } from "@/lib/categorias";
+import { paginaVacia } from "@/lib/paginacion";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 import { CategoriasView } from "./categorias-view";
 
@@ -13,10 +18,14 @@ export default async function CategoriasPage() {
   if (!usuario) redirect("/login");
   if (usuario.rol !== "GERENTE") redirect("/menu");
 
-  const resultado = await listarCategorias();
+  const [resultado, activas] = await Promise.all([
+    listarCategorias(1),
+    listarCategoriasActivas(),
+  ]);
   return (
     <CategoriasView
-      inicial={resultado.ok ? resultado.datos : []}
+      inicial={resultado.ok ? resultado.datos : paginaVacia<Categoria>()}
+      destinosIniciales={activas.ok ? activas.datos : []}
       errorInicial={resultado.ok ? undefined : resultado.error}
     />
   );

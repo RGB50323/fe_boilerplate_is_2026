@@ -1,5 +1,6 @@
 export const NOMBRE_MAX = 120;
 export const IMAGEN_MAX_BYTES = 2 * 1024 * 1024;
+export const PLATILLO_NO_EXISTE = "El platillo no existe.";
 const TIPOS_IMAGEN = ["image/jpeg", "image/png"];
 
 export type Platillo = {

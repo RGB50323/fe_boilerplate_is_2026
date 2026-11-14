@@ -3,6 +3,7 @@
 import { llamar, type Resultado } from "@/lib/api";
 import {
   cuerpoPlatillo,
+  PLATILLO_NO_EXISTE,
   validarImagen,
   validarPlatillo,
   type ImagenSubida,
@@ -10,6 +11,7 @@ import {
   type PlatilloDeshabilitado,
   type ValoresPlatillo,
 } from "@/lib/platillos";
+import type { Pagina } from "@/lib/paginacion";
 
 type PlatilloApi = Omit<Platillo, "imagenSrc">;
 
@@ -37,12 +39,34 @@ function primerError(valores: ValoresPlatillo): string | undefined {
 
 export async function listarPlatillos(
   sucursalId: number,
-): Promise<Resultado<Platillo[]>> {
-  const resultado = await llamar<PlatilloApi[]>(
-    `sucursales/${sucursalId}/platillos`,
+  pagina = 1,
+  q = "",
+): Promise<Resultado<Pagina<Platillo>>> {
+  const consulta = new URLSearchParams({ pagina: String(pagina) });
+  if (q.trim()) consulta.set("q", q.trim());
+
+  const resultado = await llamar<Pagina<PlatilloApi>>(
+    `sucursales/${sucursalId}/platillos?${consulta.toString()}`,
   );
   return resultado.ok
-    ? { ok: true, datos: resultado.datos.map(conImagen) }
+    ? {
+        ok: true,
+        datos: {
+          ...resultado.datos,
+          datos: resultado.datos.datos.map(conImagen),
+        },
+      }
+    : resultado;
+}
+
+export async function obtenerPlatillo(
+  id: number,
+): Promise<Resultado<Platillo>> {
+  const resultado = await llamar<PlatilloApi>(`platillos/${id}`, {
+    mensajes: { 404: PLATILLO_NO_EXISTE },
+  });
+  return resultado.ok
+    ? { ok: true, datos: conImagen(resultado.datos) }
     : resultado;
 }
 
