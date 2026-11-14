@@ -32,18 +32,22 @@ export function DisponibilidadForm({
   fechaInicial,
   horasIniciales,
   onReservar,
+  filtrosIniciales,
 }: {
   sucursales: Sucursal[];
   fechaInicial: string;
   horasIniciales: string[];
   onReservar?: (datos: DatosReservacion) => void;
+  filtrosIniciales?: FiltrosDisponibilidad;
 }) {
-  const [filtros, setFiltros] = useState<FiltrosDisponibilidad>({
-    sucursalId: String(sucursales[0].id),
-    fecha: fechaInicial,
-    hora: horasIniciales[0] ?? "",
-    personas: "4",
-  });
+  const [filtros, setFiltros] = useState<FiltrosDisponibilidad>(
+    filtrosIniciales ?? {
+      sucursalId: String(sucursales[0].id),
+      fecha: fechaInicial,
+      hora: horasIniciales[0] ?? "",
+      personas: "4",
+    },
+  );
   const [horas, setHoras] = useState(horasIniciales);
   const [errores, setErrores] = useState<ErroresDisponibilidad>({});
   const [consultado, setConsultado] = useState(false);

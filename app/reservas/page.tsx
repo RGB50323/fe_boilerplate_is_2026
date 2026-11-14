@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Fraunces } from "next/font/google";
 import { connection } from "next/server";
-import { fechaLocal, horasDisponibles } from "@/lib/reservaciones";
+import Link from "next/link";
+import { fechaLocal, fechaValida, horasDisponibles } from "@/lib/reservaciones";
 import { listarSucursales } from "@/app/actions/reservaciones";
-import { DisponibilidadForm } from "./disponibilidad-form";
+import { DisponibilidadView } from "./disponibilidad-view";
 import { MesaIcon } from "./mesa-icon";
 
 const fraunces = Fraunces({
@@ -19,16 +20,46 @@ export const metadata: Metadata = {
     "Consultá las mesas disponibles en nuestras sucursales según la fecha, hora y cantidad de personas.",
 };
 
-export default async function ReservasPage() {
+export default async function ReservasPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
   const { sucursales, error } = await listarSucursales();
   const ahora = new Date();
   const fecha = fechaLocal(ahora);
+  const params = await searchParams;
+  const sucursal =
+    sucursales.find((s) => String(s.id) === params.sucursalId) ?? sucursales[0];
+  const fechaFiltro =
+    typeof params.fecha === "string" && fechaValida(params.fecha)
+      ? params.fecha
+      : fecha;
+  const horas = horasDisponibles(fechaFiltro, sucursal?.horarios ?? [], ahora);
+  const filtrosIniciales = {
+    sucursalId: String(sucursal?.id ?? ""),
+    fecha: fechaFiltro,
+    hora:
+      typeof params.hora === "string" && horas.includes(params.hora)
+        ? params.hora
+        : (horas[0] ?? ""),
+    personas:
+      typeof params.personas === "string" &&
+      /^\d+$/.test(params.personas) &&
+      Number(params.personas) > 0
+        ? params.personas
+        : "4",
+  };
   return (
     <main
       className={`${fraunces.variable} min-h-dvh bg-[#101012] px-4 pb-16 pt-12 text-zinc-100 [color-scheme:dark] sm:px-8 sm:pt-16 lg:px-12`}
     >
       <div className="mx-auto max-w-6xl">
+        <div className="mb-7 flex justify-between text-sm text-orange-300">
+          <Link href="/menu">Volver al menú</Link>
+          <Link href="/perfil/reservaciones">Mis reservaciones</Link>
+        </div>
         <header className="mb-10 text-center sm:mb-12">
           <p className="mb-5 text-xs font-semibold tracking-[0.24em] text-[#FF7A1A]">
             LOS BURLE · RESERVAS
@@ -68,15 +99,12 @@ export default async function ReservasPage() {
             No hay sucursales disponibles para consultar en este momento.
           </p>
         ) : (
-          <DisponibilidadForm
-            key={JSON.stringify(sucursales)}
+          <DisponibilidadView
+            key={JSON.stringify([sucursales, filtrosIniciales])}
             sucursales={sucursales}
             fechaInicial={fecha}
-            horasIniciales={horasDisponibles(
-              fecha,
-              sucursales[0].horarios,
-              ahora,
-            )}
+            horasIniciales={horas}
+            filtrosIniciales={filtrosIniciales}
           />
         )}
       </div>

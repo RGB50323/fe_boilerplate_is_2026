@@ -17,13 +17,12 @@ type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 const initialState: LoginState = {};
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function LoginForm() {
+export function LoginForm({ siguiente = "/menu" }: { siguiente?: string }) {
   const [state, formAction, pending] = useActionState(login, initialState);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  const invalidCredentials =
-    state.error === "Correo o contraseña incorrectos.";
+  const invalidCredentials = state.error === "Correo o contraseña incorrectos.";
   const hasFieldErrors = Boolean(errors.email || errors.password);
 
   const passwordError =
@@ -65,6 +64,7 @@ export function LoginForm() {
       noValidate
       className="grid gap-5"
     >
+      <input type="hidden" name="next" value={siguiente} />
       <div className="grid gap-2">
         <label htmlFor="email" className="text-sm font-medium text-orange-200">
           Correo electrónico
@@ -86,7 +86,10 @@ export function LoginForm() {
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="password" className="text-sm font-medium text-orange-200">
+        <label
+          htmlFor="password"
+          className="text-sm font-medium text-orange-200"
+        >
           Contraseña
         </label>
 
