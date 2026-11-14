@@ -138,6 +138,8 @@ export function DrawerResenas({
       onCerrar={onCerrar}
       titulo={platillo?.nombre ?? "Reseñas"}
       descripcion="Opiniones de clientes"
+      // Borde sutil en vez del blanco del drawer base
+      className="border-l! border-zinc-800! bg-[#151517]! shadow-[-24px_0_48px_-12px_rgb(0_0_0/0.6)]"
     >
       <section aria-busy={cargando} aria-label="Reseñas">
         {cargando && !datos && <ResenasSkeleton />}
