@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { llamar, ERROR_GENERICO } from "@/lib/api";
 import {
   esReservacion,
@@ -71,7 +70,8 @@ export async function confirmarReservacion(
       error:
         "No pudimos leer la confirmación. Revisá Mis reservaciones antes de volver a confirmar.",
     };
-  revalidatePath("/perfil/reservaciones");
+  // El perfil obtiene datos frescos con no-store al abrirse. Revalidar aquí
+  // vuelve a evaluar disponibilidad y sustituye la confirmación por un conflicto.
   return { reserva: respuesta.datos };
 }
 

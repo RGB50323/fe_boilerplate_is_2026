@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { validarReserva, rutaReserva } from "@/lib/confirmacion-reserva";
 import { retornoLogin } from "@/lib/retorno-login";
-import { confirmarReservacion } from "@/app/actions/confirmacion-reserva";
+import {
+  confirmarReservacion,
+  listarMisReservaciones,
+} from "@/app/actions/confirmacion-reserva";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 vi.mock("@/lib/session", () => ({ getSession: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -38,6 +42,7 @@ beforeEach(() => {
   vi.stubEnv("API_URL", "http://backend.test/api/v1");
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockReset();
+  vi.mocked(revalidatePath).mockClear();
   vi.mocked(getSession).mockResolvedValue("token-personal");
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -94,6 +99,26 @@ describe("validación y navegación H10", () => {
   );
 });
 describe("confirmación autenticada", () => {
+  it("conserva la confirmación sin revalidar la selección y el perfil lee la nueva reserva sin caché", async () => {
+    const listado = { datos: [reserva], pagina: 1, totalPaginas: 1, total: 1 };
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(reserva), { status: 201 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(listado), { status: 200 }),
+      );
+
+    expect(await confirmarReservacion(datos())).toEqual({ reserva });
+    // Revalidar desde esta acción hace que Next vuelva a consultar disponibilidad
+    // y reemplace el formulario por "mesa no disponible" tras nuestra propia reserva.
+    expect(revalidatePath).not.toHaveBeenCalled();
+    expect(await listarMisReservaciones()).toEqual({ datos: listado });
+    const [url, opciones] = fetchMock.mock.calls[1];
+    expect(url.pathname).toBe("/api/v1/reservaciones/mias");
+    expect(opciones.cache).toBe("no-store");
+  });
+
   it("manda token y contrato permitido; nunca envía propietario ni sucursal", async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify(reserva), { status: 201 }),
