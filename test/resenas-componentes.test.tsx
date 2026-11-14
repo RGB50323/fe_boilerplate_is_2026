@@ -167,6 +167,22 @@ describe("DrawerResenas", () => {
     expect(await screen.findByText("Comentario 2")).toBeInTheDocument();
   });
 
+  it("si la página ya no existe salta a la última", async () => {
+    consultar.mockImplementation(async (_id, n) => pagina(n));
+    render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);
+    await screen.findByText("Comentario 1");
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+    await screen.findByText("Comentario 2");
+
+    // Se ocultaron reseñas: ahora solo hay 2 páginas
+    consultar.mockImplementation(async (_id, n) => pagina(n, 2));
+    fireEvent.click(screen.getByRole("button", { name: "Página siguiente" }));
+
+    expect(await screen.findByText("Página 2 de 2")).toBeInTheDocument();
+    expect(consultar).toHaveBeenLastCalledWith(7, 2);
+    expect(screen.queryByText("Comentario 3")).not.toBeInTheDocument();
+  });
+
   it("no muestra paginación con una sola página", async () => {
     consultar.mockResolvedValue(pagina(1, 1));
     render(<DrawerResenas platillo={platillo} onCerrar={() => {}} />);

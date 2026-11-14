@@ -1,5 +1,3 @@
-export const RESENAS_POR_PAGINA = 10;
-
 export type Resena = {
   id: number;
   estrellas: number;
