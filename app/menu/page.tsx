@@ -14,6 +14,7 @@ export default async function MenuPage() {
     <MenuView
       autenticado={autenticado}
       esGerente={usuario?.rol === "GERENTE"}
+      esMesero={usuario?.rol === "MESERO"}
     />
   );
 }
