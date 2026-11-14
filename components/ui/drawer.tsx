@@ -14,8 +14,8 @@ type DrawerProps = {
 };
 
 const LADOS = {
-  derecha: "right-0 border-l-2 drawer-derecha",
-  izquierda: "left-0 border-r-2 drawer-izquierda",
+  derecha: "right-0 border-l drawer-derecha",
+  izquierda: "left-0 border-r drawer-izquierda",
 };
 
 export function Drawer({
@@ -33,7 +33,7 @@ export function Drawer({
       onClose={onCerrar}
       portal={false}
       backdrop={<div className="fixed inset-0 z-40 bg-black/70" />}
-      className={`fixed inset-y-0 z-50 w-full max-w-md overflow-y-auto border-white bg-black p-6 text-zinc-100 sm:p-8 ${LADOS[lado]} ${className}`}
+      className={`fixed inset-y-0 z-50 w-full max-w-md overflow-y-auto border-zinc-800 bg-[#151517] p-6 text-zinc-100 sm:p-8 shadow-[0_0_48px_-12px_rgb(0_0_0/0.6)] ${LADOS[lado]} ${className}`}
     >
       <DialogDismiss
         aria-label="Cerrar"

@@ -1,8 +1,15 @@
 import Image from "next/image";
 import { formatoPrecio, type Platillo } from "@/lib/menu";
 import { Badge } from "@/components/ui/badge";
+import { CalificacionPlatillo } from "@/components/resenas/calificacion-platillo";
 
-export function CardPlatillo({ platillo }: { platillo: Platillo }) {
+export function CardPlatillo({
+  platillo,
+  onVerResenas,
+}: {
+  platillo: Platillo;
+  onVerResenas?: () => void;
+}) {
   return (
     <article className="flex flex-col items-center text-center">
       <div className="relative">
@@ -40,6 +47,15 @@ export function CardPlatillo({ platillo }: { platillo: Platillo }) {
       </div>
 
       <h3 className="mt-4 text-2xl">{platillo.nombre}</h3>
+      {platillo.totalResenas !== undefined && (
+        <div className="mt-1">
+          <CalificacionPlatillo
+            promedio={platillo.promedio}
+            total={platillo.totalResenas}
+            onClick={onVerResenas}
+          />
+        </div>
+      )}
       {platillo.descripcion && (
         <p className="mt-2 max-w-xs text-sm text-zinc-300">
           {platillo.descripcion}
