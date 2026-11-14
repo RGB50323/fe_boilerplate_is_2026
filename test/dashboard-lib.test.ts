@@ -5,7 +5,9 @@ import {
   filtrosDesdeParams,
   formatoMoneda,
   franjasPico,
-  generarCsv,
+  fechaHoraLocal,
+  formatoFechaCorta,
+  generarCsvVentas,
   ordenarPlatillos,
   rangoDelPeriodo,
   resumenGeneral,
@@ -14,6 +16,7 @@ import {
   FILTROS_INICIALES,
 } from "@/lib/dashboard";
 
+// Domingo 8 de noviembre de 2026, 3:00 p. m. hora de El Salvador.
 const AHORA = new Date("2026-11-08T21:00:00Z");
 
 describe("ticket promedio", () => {
@@ -130,23 +133,57 @@ describe("filtros en la URL", () => {
   });
 });
 
-describe("CSV de ventas por sucursal", () => {
-  it("incluye el periodo, cada sucursal con su ticket y el total", () => {
-    const csv = generarCsv(
-      [
-        { sucursalId: 1, nombre: "Escalón", ventas: 8120, pedidos: 640 },
-        { sucursalId: 2, nombre: "Plaza \"Norte\", local 3", ventas: 0, pedidos: 0 },
-      ],
-      { desde: "2026-11-01", hasta: "2026-11-08" },
-    );
-    expect(csv.split("\r\n")).toEqual([
-      "Desde,2026-11-01",
-      "Hasta,2026-11-08",
-      "",
-      "Sucursal,Ventas,Pedidos,Ticket promedio",
-      "Escalón,8120.00,640,12.69",
-      '"Plaza ""Norte"", local 3",0.00,0,0.00',
-      "Total,8120.00,640,12.69",
+describe("fechas en hora de El Salvador", () => {
+  it("convierte la fecha UTC del pago a fecha y hora local", () => {
+    expect(fechaHoraLocal("2026-11-09T02:35:00Z")).toEqual({
+      fecha: "08/11/2026",
+      hora: "20:35",
+    });
+  });
+
+  it("muestra el rango como dd/mm/aaaa", () => {
+    expect(formatoFechaCorta("2026-11-01")).toBe("01/11/2026");
+  });
+});
+
+describe("CSV de ventas confirmadas", () => {
+  it("tiene una fila por venta con fecha y hora locales", () => {
+    const csv = generarCsvVentas([
+      {
+        pedidoId: 15,
+        numero: "CEN-0015",
+        sucursalId: 1,
+        sucursal: "Centro",
+        fecha: "2026-11-08T18:05:00Z",
+        tipo: "MESA",
+        articulos: 3,
+        subtotal: 25,
+        descuentos: 2.5,
+        venta: 22.5,
+      },
+      {
+        pedidoId: 16,
+        numero: null,
+        sucursalId: 2,
+        sucursal: 'Plaza "Norte", local 3',
+        fecha: "2026-11-08T19:00:00Z",
+        tipo: "LLEVAR",
+        articulos: 1,
+        subtotal: 8.99,
+        descuentos: 0,
+        venta: 8.99,
+      },
     ]);
+    expect(csv.split("\r\n")).toEqual([
+      "Fecha,Hora,Pedido,Sucursal,Tipo,Artículos,Subtotal,Descuentos,Venta",
+      "08/11/2026,12:05,CEN-0015,Centro,Mesa,3,25.00,2.50,22.50",
+      '08/11/2026,13:00,#16,"Plaza ""Norte"", local 3",Para llevar,1,8.99,0.00,8.99',
+    ]);
+  });
+
+  it("sin ventas solo tiene el encabezado", () => {
+    expect(generarCsvVentas([])).toBe(
+      "Fecha,Hora,Pedido,Sucursal,Tipo,Artículos,Subtotal,Descuentos,Venta",
+    );
   });
 });

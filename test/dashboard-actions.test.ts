@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { consultarDashboard } from "@/app/actions/dashboard";
+import { NextRequest } from "next/server";
+import { consultarDashboard, consultarVentas } from "@/app/actions/dashboard";
+import { GET as exportar } from "@/app/dashboard/exportar/route";
 import { FILTROS_INICIALES } from "@/lib/dashboard";
 
 const mocks = vi.hoisted(() => ({
@@ -28,6 +30,7 @@ const respuestaApi = {
   platillos: [],
   horariosPico: [],
 };
+const paginaApi = { items: [], total: 0, pagina: 2, porPagina: 20 };
 const rangoOctubre = {
   ...FILTROS_INICIALES,
   periodo: "rango" as const,
@@ -35,13 +38,13 @@ const rangoOctubre = {
   hasta: "2026-10-31",
 };
 
-describe("consultarDashboard", () => {
-  beforeEach(() => {
-    mocks.getSession.mockReset().mockResolvedValue("token-123");
-    mocks.getUsuarioActual.mockReset().mockResolvedValue(gerente);
-    vi.stubEnv("API_URL", "http://api.test");
-  });
+beforeEach(() => {
+  mocks.getSession.mockReset().mockResolvedValue("token-123");
+  mocks.getUsuarioActual.mockReset().mockResolvedValue(gerente);
+  vi.stubEnv("API_URL", "http://api.test/api/v1");
+});
 
+describe("consultarDashboard", () => {
   it("no consulta al backend si el usuario no es gerente general", async () => {
     mocks.getUsuarioActual.mockResolvedValue(mesero);
     const fetchMock = vi.fn();
@@ -59,7 +62,7 @@ describe("consultarDashboard", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const r = await consultarDashboard({ ...rangoOctubre, hasta: "2026-09-01" });
-    expect(r.error).toBe("El rango de fechas no es válido.");
+    expect(r).toMatchObject({ motivo: "rango-invalido" });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -72,7 +75,7 @@ describe("consultarDashboard", () => {
     expect(r).toEqual({ dashboard: respuestaApi });
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe(
-      "http://api.test/dashboard/ventas?desde=2026-10-01&hasta=2026-10-31&sucursalId=2&diaSemana=5",
+      "http://api.test/api/v1/dashboard/ventas?desde=2026-10-01&hasta=2026-10-31&sucursalId=2&diaSemana=5",
     );
     expect(init.headers).toEqual({ Authorization: "Bearer token-123" });
   });
@@ -113,5 +116,97 @@ describe("consultarDashboard", () => {
     mocks.getUsuarioActual.mockResolvedValue({ estado: "error" });
 
     expect(await consultarDashboard(rangoOctubre)).toMatchObject({ motivo: "error" });
+  });
+});
+
+describe("consultarVentas", () => {
+  it("pide la página al backend con el rango y la sucursal", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(paginaApi));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await consultarVentas({ ...rangoOctubre, sucursalId: "1", dia: "5" }, 2);
+
+    expect(r).toEqual({ ventas: paginaApi });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "http://api.test/api/v1/dashboard/ventas/detalle?desde=2026-10-01&hasta=2026-10-31&sucursalId=1&pagina=2&porPagina=20",
+    );
+  });
+
+  it("rechaza una página no válida", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await consultarVentas(rangoOctubre, 0)).toMatchObject({ motivo: "error" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("no consulta si el usuario no es gerente general", async () => {
+    mocks.getUsuarioActual.mockResolvedValue(mesero);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await consultarVentas(rangoOctubre, 1)).toMatchObject({ motivo: "sin-acceso" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("con datos de prueba pagina de 20 en 20, de la más reciente a la más antigua", async () => {
+    vi.stubEnv("DASHBOARD_DATOS_PRUEBA", "true");
+    const r = await consultarVentas(rangoOctubre, 1);
+    const items = r.ventas!.items;
+    expect(items).toHaveLength(20);
+    expect(r.ventas!.total).toBeGreaterThan(20);
+    expect(items[0].fecha >= items[19].fecha).toBe(true);
+  });
+});
+
+// Response.text() descarta el BOM, así que se lee el cuerpo conservándolo.
+const textoConBom = async (res: Response) =>
+  new TextDecoder("utf-8", { ignoreBOM: true }).decode(await res.arrayBuffer());
+
+describe("GET /dashboard/exportar", () => {
+  const pedir = (qs: string) =>
+    exportar(new NextRequest(`http://localhost/dashboard/exportar?${qs}`));
+
+  it("descarga el CSV del backend como archivo", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response("Fecha,Hora\r\n08/11/2026,12:05", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await pedir("periodo=rango&desde=2026-10-01&hasta=2026-10-31&sucursal=2");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="ventas-confirmadas_2026-10-01_2026-10-31.csv"',
+    );
+    expect(await textoConBom(res)).toBe("﻿Fecha,Hora\r\n08/11/2026,12:05");
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "http://api.test/api/v1/dashboard/ventas/exportar?desde=2026-10-01&hasta=2026-10-31&sucursalId=2",
+    );
+  });
+
+  it("responde 403 a quien no es gerente general", async () => {
+    mocks.getUsuarioActual.mockResolvedValue(mesero);
+    const res = await pedir("periodo=mes");
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ motivo: "sin-acceso" });
+  });
+
+  it("responde 400 si el rango no es válido", async () => {
+    const res = await pedir("periodo=rango&desde=2026-10-31&hasta=2026-10-01");
+    expect(res.status).toBe(400);
+  });
+
+  it("con datos de prueba genera el CSV sin llamar al backend", async () => {
+    vi.stubEnv("DASHBOARD_DATOS_PRUEBA", "true");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await pedir("periodo=rango&desde=2026-10-01&hasta=2026-10-02");
+    const lineas = (await textoConBom(res)).split("\r\n");
+    expect(lineas[0]).toBe(
+      "﻿Fecha,Hora,Pedido,Sucursal,Tipo,Artículos,Subtotal,Descuentos,Venta",
+    );
+    expect(lineas.length).toBeGreaterThan(1);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
