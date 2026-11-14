@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { retornoLogin } from "@/lib/retorno-login";
 import { createSession, deleteSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 
@@ -69,7 +70,7 @@ export async function login(
   }
 
   await createSession(token);
-  redirect("/menu");
+  redirect(retornoLogin(formData.get("next")));
 }
 
 export async function logout() {

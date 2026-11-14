@@ -188,6 +188,20 @@ function Menu({
               label: s.nombre,
             }))}
           />
+          <Link
+            href="/reservas"
+            className="text-sm text-zinc-300 hover:text-orange-300"
+          >
+            Reservar mesa
+          </Link>
+          {autenticado && (
+            <Link
+              href="/perfil/reservaciones"
+              className="text-sm text-zinc-300 hover:text-orange-300"
+            >
+              Mi perfil
+            </Link>
+          )}
           {autenticado && <CampanaNotificaciones enLinea />}
           {esGerente && (
             <Link
@@ -385,7 +399,7 @@ export function MenuView({
         <Menu
           autenticado={autenticado}
           esGerente={esGerente}
-          esMesero={esMesero}  
+          esMesero={esMesero}
         />
       </Suspense>
     </main>
