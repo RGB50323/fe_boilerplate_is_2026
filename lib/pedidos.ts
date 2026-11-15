@@ -66,6 +66,12 @@ export type LineaPedido = {
   nota: string;
 };
 
+export type PedidoLlevarCreado = {
+  pedidoId: number;
+  estado: string;
+  total: number;
+};
+
 export function normalizarTexto(texto: string) {
   return texto
     .normalize("NFD")

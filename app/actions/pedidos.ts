@@ -1,14 +1,17 @@
 "use server";
 
 import { ERROR_GENERICO, llamar, type Resultado } from "@/lib/api";
+import { Pagina } from "@/lib/paginacion";
 import type {
   ItemNuevo,
   ItemsAgregados,
   Mesa,
   PedidoCreado,
   PedidoDetalle,
+  PedidoLlevarCreado,
   PedidoTotal,
 } from "@/lib/pedidos";
+import { PEDIDO_NO_EXISTE, PedidoCancelado, PedidoResumen, PedidoSeguimiento, YA_EN_PREPARACION } from "@/lib/seguimiento";
 
 const ERROR_ENVIO = "No pudimos enviar el pedido. Intenta de nuevo.";
 const ITEM_LISTO = "Este platillo ya está listo y no se puede modificar.";
@@ -105,4 +108,53 @@ export async function quitarItem(
       409: ITEM_LISTO,
     },
   });
+}
+
+
+export async function crearPedidoLlevar(
+  sucursalId: number,
+  nombreCliente: string,
+  items: ItemNuevo[],
+): Promise<Resultado<PedidoLlevarCreado>> {
+  return llamar<PedidoLlevarCreado>("pedidos", {
+    metodo: "POST",
+    cuerpo: {
+      tipo: "LLEVAR",
+      sucursalId,
+      nombreCliente: nombreCliente.trim(),
+      items: cuerpoItems(items),
+    },
+    mensajes: {
+      400: "Ingresa tu nombre completo.",
+      404: "La sucursal o un platillo ya no existe.",
+      422: "Algunos platillos ya no están disponibles.",
+    },
+  });
+}
+
+export async function obtenerSeguimiento(
+  id: number,
+): Promise<Resultado<PedidoSeguimiento>> {
+  return llamar<PedidoSeguimiento>(`pedidos/${id}/seguimiento`, {
+    mensajes: { 404: PEDIDO_NO_EXISTE },
+  });
+}
+
+export async function cancelarPedidoLlevar(
+  id: number,
+): Promise<Resultado<PedidoCancelado>> {
+  return llamar<PedidoCancelado>(`pedidos/${id}/cancelar`, {
+    metodo: "POST",
+    detallarErrores: true,
+    mensajes: { 404: PEDIDO_NO_EXISTE, 409: YA_EN_PREPARACION },
+  });
+}
+
+export async function listarMisPedidos(
+  pagina = 1,
+): Promise<Resultado<Pagina<PedidoResumen>>> {
+  if (!Number.isInteger(pagina) || pagina < 1) {
+    return { ok: false, error: "Página inválida." };
+  }
+  return llamar<Pagina<PedidoResumen>>(`pedidos/mios?pagina=${pagina}`);
 }

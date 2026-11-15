@@ -6,10 +6,17 @@ import { CalificacionPlatillo } from "@/components/resenas/calificacion-platillo
 export function CardPlatillo({
   platillo,
   onVerResenas,
+  enCarrito = 0,
+  onAgregar,
 }: {
   platillo: Platillo;
   onVerResenas?: () => void;
+  enCarrito?: number;
+  onAgregar?: () => void;
 }) {
+  const agotado = platillo.disponibilidad < 1;
+  const enElMaximo = !agotado && enCarrito >= platillo.disponibilidad;
+
   return (
     <article className="flex flex-col items-center text-center">
       <div className="relative">
@@ -60,6 +67,23 @@ export function CardPlatillo({
         <p className="mt-2 max-w-xs text-sm text-zinc-300">
           {platillo.descripcion}
         </p>
+      )}
+      {onAgregar && (
+        <button
+          type="button"
+          onClick={onAgregar}
+          disabled={agotado || enElMaximo}
+          aria-label={`Agregar ${platillo.nombre} al pedido`}
+          className="mt-4 cursor-pointer rounded-full bg-[#FF7A1A] px-5 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {agotado
+            ? "Agotado"
+            : enElMaximo
+              ? "Máximo disponible"
+              : enCarrito > 0
+                ? `Agregar otro (${enCarrito})`
+                : "Agregar"}
+        </button>
       )}
     </article>
   );
