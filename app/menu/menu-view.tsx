@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { Fraunces } from "next/font/google";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,6 +25,11 @@ import {
   type MenuRespuesta,
 } from "@/lib/menu";
 import { SUCURSALES } from "@/lib/sucursales";
+import { CarritoLlevar } from "@/components/menu/carrito-llevar";
+import { useCarritoLlevar } from "@/components/menu/use-carrito-llevar";
+import { cantidadDe } from "@/lib/carrito-llevar";
+import { AccionesHeader } from "@/components/menu/acciones-header";
+
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -68,6 +72,9 @@ function Menu({
     nombre: string;
   } | null>(null);
   const [cerrandoSesion, cerrarSesion] = useTransition();
+
+  const carrito = useCarritoLlevar(sucursalId);
+  const puedePedir = !esGerente && !esMesero;
 
   const errores = validarFiltros(entrada);
   const clave = `${qs}#${reintento}`;
@@ -188,59 +195,19 @@ function Menu({
               label: s.nombre,
             }))}
           />
-          <Link
-            href="/reservas"
-            className="text-sm text-zinc-300 hover:text-orange-300"
-          >
-            Reservar mesa
-          </Link>
-          {autenticado && (
-            <Link
-              href="/perfil/reservaciones"
-              className="text-sm text-zinc-300 hover:text-orange-300"
-            >
-              Mi perfil
-            </Link>
-          )}
           {autenticado && <CampanaNotificaciones enLinea />}
-          {esGerente && (
-            <Link
-              href="/admin/platillos"
-              className="whitespace-nowrap rounded-full bg-[#FF7A1A] px-4 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:px-5 sm:py-3"
-            >
-              Gestionar platillos
-            </Link>
-          )}
-          {esMesero && (
-            <Link
-              href="/mesero/pedidos"
-              className="whitespace-nowrap rounded-full bg-[#FF7A1A] px-4 py-2 text-sm font-semibold text-[#101012] transition-colors hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:px-5 sm:py-3"
-            >
-              Registrar pedido
-            </Link>
-          )}
-          {autenticado ? (
-            <Button
-              type="button"
-              disabled={cerrandoSesion}
-              onClick={() =>
-                cerrarSesion(async () => {
-                  await logout();
-                })
-              }
-              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
-            >
-              {cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
-            >
-              Iniciar sesión
-            </Button>
-          )}
+          <AccionesHeader
+            autenticado={autenticado}
+            esGerente={esGerente}
+            esMesero={esMesero}
+            cerrandoSesion={cerrandoSesion}
+            onCerrarSesion={() =>
+              cerrarSesion(async () => {
+                await logout();
+              })
+            }
+            onIniciarSesion={() => router.push("/login")}
+          />
         </div>
       </header>
 
@@ -366,6 +333,10 @@ function Menu({
                     onVerResenas={() =>
                       setConResenas({ id: p.id, nombre: p.nombre })
                     }
+                    enCarrito={cantidadDe(carrito.lineas, p.id)}
+                    onAgregar={
+                      puedePedir ? () => carrito.agregar(p) : undefined
+                    }
                   />
                 </li>
               ))}
@@ -373,6 +344,31 @@ function Menu({
           </div>
         ))}
       </section>
+
+      {carrito.vaciado && (
+        <div
+          role="status"
+          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-xl items-center justify-between gap-4 rounded-xl border border-orange-400/40 bg-[#18181b] p-4 text-sm text-orange-200 shadow-2xl"
+        >
+          <p>Cambiaste de sucursal, por eso vaciamos tu carrito.</p>
+          <button
+            type="button"
+            onClick={carrito.descartarAviso}
+            className="cursor-pointer underline"
+          >
+            Entendido
+          </button>
+        </div>
+      )}
+      {puedePedir && (
+        <CarritoLlevar
+          sucursalId={sucursalId}
+          lineas={carrito.lineas}
+          onCambiarCantidad={carrito.cambiarCantidad}
+          onCambiarNota={carrito.cambiarNota}
+          onQuitar={carrito.quitar}
+        />
+      )}
 
       <DrawerResenas
         platillo={conResenas}
