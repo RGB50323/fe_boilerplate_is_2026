@@ -4,12 +4,16 @@ import {
   UMBRAL_RETRASO_MIN,
   agregarPedido,
   conRecepcion,
+  esPedidoCocina,
   estaRetrasado,
+  leerItemListo,
+  leerPedidoListo,
+  marcarItemListo,
   prepararLista,
   quitarPedido,
   reemplazarPedido,
 } from "./pedidos";
-import type { PedidoCocina, PedidoEnTablero } from "./tipos";
+import type { ItemListo, PedidoCocina, PedidoEnTablero } from "./tipos";
 
 export type EstadoCarga = "cargando" | "listo" | "error" | "sin-acceso";
 export type EstadoConexion = "conectando" | "en-vivo" | "reconectando";
@@ -23,7 +27,7 @@ export type EstadoTablero = {
 };
 
 export type AvisoTablero = {
-  tipo: "nuevo" | "retrasado";
+  tipo: "nuevo" | "retrasado" | "listo";
   pedido: PedidoEnTablero;
 };
 
@@ -65,7 +69,13 @@ export type Tablero = {
   iniciar: () => void;
   detener: () => void;
   reintentar: () => void;
+  marcarItemListo: (item: ItemListo) => void;
+  refrescar: () => void;
+  cerrarSesion: () => void;
 };
+
+const EVENTOS_ITEM_LISTO = ["item:listo", "item.listo"];
+const EVENTOS_PEDIDO_LISTO = ["pedido:listo", "pedido.listo"];
 
 const PATRON_SIN_ACCESO = /permiso|sucursal/i;
 
@@ -112,6 +122,33 @@ export function crearTablero(opciones: OpcionesTablero): Tablero {
     cambiosDuranteSync?.push(cambio);
     const pedidos = cambio(estado.pedidos);
     if (pedidos !== estado.pedidos) actualizar({ pedidos });
+  }
+
+  function aplicarListo(cambio: Cambio, pedidoListo: PedidoEnTablero | undefined) {
+    aplicar(cambio);
+    if (pedidoListo && !estado.pedidos.some((p) => p.id === pedidoListo.id)) {
+      opciones.alAvisar?.({ tipo: "listo", pedido: pedidoListo });
+    }
+  }
+
+  function itemListo(item: ItemListo) {
+    const pedido = estado.pedidos.find(
+      (p) =>
+        (item.pedidoId === undefined || p.id === item.pedidoId) &&
+        p.items.some((i) => i.id === item.itemId),
+    );
+    aplicarListo((lista) => marcarItemListo(lista, item), pedido);
+  }
+
+  function pedidoConItemListo(pedido: PedidoCocina) {
+    const anterior = estado.pedidos.find((p) => p.id === pedido.id);
+    const momento = ahora();
+    aplicarListo((lista) => reemplazarPedido(lista, pedido, momento), anterior);
+  }
+
+  function pedidoListo(id: number) {
+    const pedido = estado.pedidos.find((p) => p.id === id);
+    aplicarListo((lista) => quitarPedido(lista, id), pedido);
   }
 
   function cerrarSesion() {
@@ -235,6 +272,26 @@ export function crearTablero(opciones: OpcionesTablero): Tablero {
       }),
     );
 
+    for (const evento of EVENTOS_ITEM_LISTO) {
+      nuevo.on(
+        evento,
+        siVigente((datos: unknown) => {
+          if (esPedidoCocina(datos)) return pedidoConItemListo(datos);
+          const item = leerItemListo(datos);
+          if (item) itemListo(item);
+        }),
+      );
+    }
+    for (const evento of EVENTOS_PEDIDO_LISTO) {
+      nuevo.on(
+        evento,
+        siVigente((datos: unknown) => {
+          const id = leerPedidoListo(datos);
+          if (id !== null) pedidoListo(id);
+        }),
+      );
+    }
+
     nuevo.connect();
   }
 
@@ -266,6 +323,10 @@ export function crearTablero(opciones: OpcionesTablero): Tablero {
     if (socket && !socket.active) socket.connect();
   }
 
+  function refrescar() {
+    if (activo) void sincronizar();
+  }
+
   return {
     obtenerEstado: () => estado,
     suscribir(oyente) {
@@ -277,5 +338,10 @@ export function crearTablero(opciones: OpcionesTablero): Tablero {
     iniciar,
     detener,
     reintentar,
+    marcarItemListo: (item) => {
+      if (activo) itemListo(item);
+    },
+    refrescar,
+    cerrarSesion,
   };
 }

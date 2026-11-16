@@ -12,11 +12,17 @@ const DURACION_AVISO_MS = 6_000;
 
 const ESTILOS = {
   nuevo: "border-green-800 bg-green-950 text-green-100",
+  listo: "border-green-700 bg-green-900 text-green-50",
   retrasado: "border-red-900 bg-red-950 text-red-100",
+  error: "border-red-800 bg-red-950 text-red-100",
+  info: "border-zinc-600 bg-zinc-700 text-zinc-100",
   reconectando: "border-amber-800 bg-amber-950 text-amber-100",
 };
 
-function texto({ tipo, pedido }: AvisoCocina): string {
+function texto(aviso: AvisoCocina): string {
+  if ("mensaje" in aviso) return aviso.mensaje;
+  const { tipo, pedido } = aviso;
+  if (tipo === "listo") return `Pedido ${textoNumero(pedido)} listo para entregar`;
   const referencia = `${textoNumero(pedido)} · ${textoDestino(pedido)}`;
   return tipo === "nuevo"
     ? `Nuevo pedido ${referencia}`

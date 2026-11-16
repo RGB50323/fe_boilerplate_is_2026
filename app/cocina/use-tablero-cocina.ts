@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { io } from "socket.io-client";
 import { logout } from "@/app/actions/auth";
-import { listarPedidosCocina } from "@/app/actions/cocina";
+import { listarPedidosCocina, marcarItemListo } from "@/app/actions/cocina";
 import { INTERVALO_RECONEXION_MS } from "@/lib/cocina/pedidos";
 import {
   NoAutorizadoError,
@@ -22,7 +22,21 @@ type Opciones = {
   token: string;
 };
 
-export type AvisoCocina = AvisoTablero & { id: number };
+export type AvisoMensaje = { tipo: "error" | "info"; mensaje: string };
+
+export type AvisoCocina = (AvisoTablero | AvisoMensaje) & { id: number };
+
+const MENSAJE_YA_LISTO = "Este platillo ya fue marcado como listo";
+const MENSAJE_ERROR_LISTO = "No pudimos marcar el platillo. Intenta de nuevo";
+
+async function pedirListo(itemId: number) {
+  try {
+    return await marcarItemListo(itemId);
+  } catch (error) {
+    console.error("Error al marcar el platillo como listo:", error);
+    return { error: MENSAJE_ERROR_LISTO };
+  }
+}
 
 async function obtenerPedidos(): Promise<PedidoCocina[]> {
   const resultado = await listarPedidosCocina();
@@ -41,6 +55,11 @@ export function useTableroCocina({ socketUrl, token }: Opciones) {
   const tableroRef = useRef<Tablero | null>(null);
   const siguienteAviso = useRef(0);
 
+  const avisar = useCallback((aviso: AvisoTablero | AvisoMensaje) => {
+    const id = ++siguienteAviso.current;
+    setAvisos((actuales) => [...actuales, { ...aviso, id }].slice(-3));
+  }, []);
+
   useEffect(() => {
     const tablero = crearTablero({
       crearSocket: () =>
@@ -56,10 +75,7 @@ export function useTableroCocina({ socketUrl, token }: Opciones) {
       alNoAutorizado: () => {
         void logout().finally(() => router.replace("/login"));
       },
-      alAvisar: (aviso) => {
-        const id = ++siguienteAviso.current;
-        setAvisos((actuales) => [...actuales, { ...aviso, id }].slice(-3));
-      },
+      alAvisar: avisar,
     });
     tableroRef.current = tablero;
     const desuscribir = tablero.suscribir(setEstado);
@@ -70,7 +86,7 @@ export function useTableroCocina({ socketUrl, token }: Opciones) {
       tablero.detener();
       tableroRef.current = null;
     };
-  }, [socketUrl, token, router]);
+  }, [socketUrl, token, router, avisar]);
 
   const reintentar = useCallback(() => tableroRef.current?.reintentar(), []);
   const descartarAviso = useCallback(
@@ -78,5 +94,26 @@ export function useTableroCocina({ socketUrl, token }: Opciones) {
     [],
   );
 
-  return { ...estado, avisos, reintentar, descartarAviso };
+  const marcarListo = useCallback(
+    async (itemId: number, pedidoId: number) => {
+      const resultado = await pedirListo(itemId);
+      const tablero = tableroRef.current;
+      if (!tablero) return;
+
+      if ("item" in resultado) {
+        tablero.marcarItemListo({ pedidoId, ...resultado.item });
+      } else if ("yaListo" in resultado) {
+        tablero.marcarItemListo({ itemId, pedidoId });
+        tablero.refrescar();
+        avisar({ tipo: "info", mensaje: MENSAJE_YA_LISTO });
+      } else if ("sinSesion" in resultado) {
+        tablero.cerrarSesion();
+      } else {
+        avisar({ tipo: "error", mensaje: resultado.error });
+      }
+    },
+    [avisar],
+  );
+
+  return { ...estado, avisos, reintentar, descartarAviso, marcarListo };
 }

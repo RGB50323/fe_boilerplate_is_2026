@@ -1,4 +1,5 @@
 import type {
+  ItemListo,
   ItemPedidoCocina,
   PedidoCocina,
   PedidoEnTablero,
@@ -27,12 +28,33 @@ function itemsNuevosEntre(
     .map((item) => item.id);
 }
 
+function conservarHoraListo(
+  anterior: PedidoEnTablero | undefined,
+  items: ItemPedidoCocina[],
+): ItemPedidoCocina[] {
+  if (!anterior) return items;
+  const horas = new Map(
+    anterior.items.filter((item) => item.listoEn).map((item) => [item.id, item.listoEn]),
+  );
+  if (horas.size === 0) return items;
+  return items.map((item) =>
+    item.estado === "LISTO" && !item.listoEn && horas.has(item.id)
+      ? { ...item, listoEn: horas.get(item.id) }
+      : item,
+  );
+}
+
 export function conRecepcion(
   pedido: PedidoCocina,
   recibidoEn: number,
   anterior?: PedidoEnTablero,
 ): PedidoEnTablero {
-  return { ...pedido, recibidoEn, itemsNuevos: itemsNuevosEntre(anterior, pedido) };
+  return {
+    ...pedido,
+    items: conservarHoraListo(anterior, pedido.items),
+    recibidoEn,
+    itemsNuevos: itemsNuevosEntre(anterior, pedido),
+  };
 }
 
 export function estaCompleto(pedido: PedidoCocina): boolean {
@@ -90,6 +112,45 @@ export function quitarPedido(
   return lista.some((p) => p.id === id) ? lista.filter((p) => p.id !== id) : lista;
 }
 
+export function marcarItemListo(
+  lista: PedidoEnTablero[],
+  { itemId, pedidoId, listoEn, pedidoEstado }: ItemListo,
+): PedidoEnTablero[] {
+  const pedido = lista.find(
+    (p) =>
+      (pedidoId === undefined || p.id === pedidoId) &&
+      p.items.some((item) => item.id === itemId),
+  );
+  if (pedidoEstado === "LISTO") {
+    const id = pedido?.id ?? pedidoId;
+    return id === undefined ? lista : quitarPedido(lista, id);
+  }
+  if (!pedido) return lista;
+
+  let cambio = false;
+  const items = pedido.items.map((item) => {
+    if (item.id !== itemId) return item;
+    if (item.estado === "PENDIENTE") {
+      cambio = true;
+      return { ...item, estado: "LISTO" as const, listoEn: listoEn ?? null };
+    }
+    if (item.estado === "LISTO" && !item.listoEn && listoEn) {
+      cambio = true;
+      return { ...item, listoEn };
+    }
+    return item;
+  });
+  if (!cambio) return lista;
+
+  const actualizado: PedidoEnTablero = {
+    ...pedido,
+    items,
+    itemsNuevos: pedido.itemsNuevos.filter((id) => id !== itemId),
+  };
+  if (estaCompleto(actualizado)) return quitarPedido(lista, pedido.id);
+  return lista.map((p) => (p.id === pedido.id ? actualizado : p));
+}
+
 export function minutosDeEspera(pedido: PedidoEnTablero, ahora: number): number {
   const transcurrido = Math.max(0, ahora - pedido.recibidoEn);
   return Math.floor(pedido.minutosEspera + transcurrido / MS_POR_MINUTO);
@@ -119,6 +180,16 @@ export function formatearHora(iso: string): string {
   return `${hh}:${mm}`;
 }
 
+const PATRON_HORA = /^(\d{1,2}):(\d{2})$/;
+
+export function horaListo(listoEn: string | null | undefined): string | null {
+  if (!listoEn) return null;
+  const hora = PATRON_HORA.exec(listoEn.trim());
+  if (hora) return `${hora[1].padStart(2, "0")}:${hora[2]}`;
+  if (Number.isNaN(Date.parse(listoEn))) return null;
+  return formatearHora(listoEn);
+}
+
 export function textoDestino(pedido: PedidoCocina): string {
   if (pedido.tipo === "LLEVAR") return "Para llevar";
   if (pedido.destino) return pedido.destino;
@@ -137,6 +208,9 @@ function esItem(valor: unknown): valor is ItemPedidoCocina {
     typeof item.platillo === "string" &&
     Number.isInteger(item.cantidad) &&
     (item.nota === null || typeof item.nota === "string") &&
+    (item.listoEn === undefined ||
+      item.listoEn === null ||
+      typeof item.listoEn === "string") &&
     (item.estado === "PENDIENTE" ||
       item.estado === "LISTO" ||
       item.estado === "ENTREGADO")
@@ -159,6 +233,33 @@ export function esPedidoCocina(valor: unknown): valor is PedidoCocina {
     Array.isArray(pedido.items) &&
     pedido.items.every(esItem)
   );
+}
+
+function enteroPositivo(valor: unknown): valor is number {
+  return Number.isInteger(valor) && (valor as number) > 0;
+}
+
+export function leerItemListo(valor: unknown): ItemListo | null {
+  if (!valor || typeof valor !== "object") return null;
+  const datos = valor as Record<string, unknown>;
+  const itemId = datos.itemId;
+  if (!enteroPositivo(itemId)) return null;
+  if (datos.estado !== undefined && datos.estado !== "LISTO") return null;
+  return {
+    itemId,
+    ...(enteroPositivo(datos.pedidoId) ? { pedidoId: datos.pedidoId } : {}),
+    ...(typeof datos.listoEn === "string" ? { listoEn: datos.listoEn } : {}),
+    ...(typeof datos.pedidoEstado === "string"
+      ? { pedidoEstado: datos.pedidoEstado }
+      : {}),
+  };
+}
+
+export function leerPedidoListo(valor: unknown): number | null {
+  if (!valor || typeof valor !== "object") return null;
+  const datos = valor as Record<string, unknown>;
+  const id = datos.pedidoId ?? datos.id;
+  return enteroPositivo(id) ? id : null;
 }
 
 export function urlSocketCocina(env: {
