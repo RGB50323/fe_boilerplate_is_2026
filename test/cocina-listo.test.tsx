@@ -148,8 +148,8 @@ describe("acción Listo en el tablero de cocina (FE-7.1)", () => {
     expect(screen.getAllByText("Pedido SI-000120 listo para entregar")).toHaveLength(1);
   });
 
-  it("409: no muestra error, deja el platillo listo y refresca el tablero", async () => {
-    mocks.marcar.mockResolvedValue({ yaListo: true });
+  it("409 con el platillo ya listo: refresca, lo muestra listo y no muestra error", async () => {
+    mocks.marcar.mockResolvedValue({ conflicto: true });
     await montar();
     mocks.listar.mockResolvedValue({ pedidos: [PEDIDO_CON_PUPUSA_LISTA, OTRO] });
     const consultas = mocks.listar.mock.calls.length;
@@ -163,6 +163,42 @@ describe("acción Listo en el tablero de cocina (FE-7.1)", () => {
     expect(screen.queryByText(/No pudimos/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("Este platillo ya fue marcado como listo")).toBeInTheDocument();
+  });
+
+  it("409 con el pedido cancelado: no marca el platillo ni avisa que está listo", async () => {
+    const soloUnoPendiente = { ...PEDIDO, items: [PEDIDO.items[0], { ...PEDIDO.items[1], estado: "LISTO" as const }] };
+    const refresco = diferido<PedidosCocinaResultado>();
+    mocks.marcar.mockResolvedValue({ conflicto: true });
+    await montar([soloUnoPendiente, OTRO]);
+    mocks.listar.mockReturnValue(refresco.promesa);
+
+    await pulsar(botonPupusa());
+    expect(fila(/Pupusa revuelta/)).toHaveAttribute("data-estado", "PENDIENTE");
+    expect(botonPupusa()).toBeDisabled();
+
+    await act(async () => {
+      refresco.resolver({ pedidos: [OTRO] });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.queryByRole("article", { name: /SI-000120/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/listo para entregar/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Este platillo ya fue marcado como listo")).not.toBeInTheDocument();
+    expect(screen.getByText("Este pedido ya no está en cocina")).toBeInTheDocument();
+    expect(screen.getByText("1 pedido pendiente")).toBeInTheDocument();
+  });
+
+  it("409 sin poder confirmar el estado: el platillo sigue pendiente y el botón se habilita", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.marcar.mockResolvedValue({ conflicto: true });
+    await montar();
+    mocks.listar.mockResolvedValue({ error: "No pudimos cargar los pedidos" });
+
+    await pulsar(botonPupusa());
+
+    expect(fila(/Pupusa revuelta/)).toHaveAttribute("data-estado", "PENDIENTE");
+    expect(botonPupusa()).toBeEnabled();
+    expect(screen.getByText("No pudimos marcar el platillo. Intenta de nuevo")).toBeInTheDocument();
+    expect(screen.queryByText("Este platillo ya fue marcado como listo")).not.toBeInTheDocument();
   });
 
   it("error genérico: mensaje breve y el botón vuelve a habilitarse", async () => {
@@ -228,7 +264,7 @@ describe("acción Listo en el tablero de cocina (FE-7.1)", () => {
     expect(within(fila(/Pupusa revuelta/)).queryByRole("button")).not.toBeInTheDocument();
 
     await act(async () => {
-      resolver({ yaListo: true });
+      resolver({ conflicto: true });
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(within(tarjeta()).getAllByRole("listitem")).toHaveLength(2);

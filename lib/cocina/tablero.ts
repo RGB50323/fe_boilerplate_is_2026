@@ -70,7 +70,7 @@ export type Tablero = {
   detener: () => void;
   reintentar: () => void;
   marcarItemListo: (item: ItemListo) => void;
-  refrescar: () => void;
+  refrescar: () => Promise<void>;
   cerrarSesion: () => void;
 };
 
@@ -323,8 +323,8 @@ export function crearTablero(opciones: OpcionesTablero): Tablero {
     if (socket && !socket.active) socket.connect();
   }
 
-  function refrescar() {
-    if (activo) void sincronizar();
+  function refrescar(): Promise<void> {
+    return activo ? sincronizar() : Promise.resolve();
   }
 
   return {

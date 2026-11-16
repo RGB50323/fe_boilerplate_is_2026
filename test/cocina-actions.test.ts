@@ -79,9 +79,12 @@ describe("marcarItemListo", () => {
     expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer token-123");
   });
 
-  it("un 409 indica que ya estaba listo", async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 409 }));
-    await expect(marcarItemListo(301)).resolves.toEqual({ yaListo: true });
+  it("un 409 se devuelve como conflicto, sea ítem ya listo o pedido fuera de cocina", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ message: "Este platillo ya está listo." }, { status: 409 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ conflicto: true });
+
+    fetchMock.mockResolvedValueOnce(Response.json({ message: "El pedido no está en cocina." }, { status: 409 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ conflicto: true });
   });
 
   it("devuelve sinSesion sin token o con 401", async () => {

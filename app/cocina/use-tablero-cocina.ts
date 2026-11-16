@@ -27,6 +27,7 @@ export type AvisoMensaje = { tipo: "error" | "info"; mensaje: string };
 export type AvisoCocina = (AvisoTablero | AvisoMensaje) & { id: number };
 
 const MENSAJE_YA_LISTO = "Este platillo ya fue marcado como listo";
+const MENSAJE_FUERA_DE_COCINA = "Este pedido ya no está en cocina";
 const MENSAJE_ERROR_LISTO = "No pudimos marcar el platillo. Intenta de nuevo";
 
 async function pedirListo(itemId: number) {
@@ -102,10 +103,17 @@ export function useTableroCocina({ socketUrl, token }: Opciones) {
 
       if ("item" in resultado) {
         tablero.marcarItemListo({ pedidoId, ...resultado.item });
-      } else if ("yaListo" in resultado) {
-        tablero.marcarItemListo({ itemId, pedidoId });
-        tablero.refrescar();
-        avisar({ tipo: "info", mensaje: MENSAJE_YA_LISTO });
+      } else if ("conflicto" in resultado) {
+        await tablero.refrescar();
+        const pedido = tablero.obtenerEstado().pedidos.find((p) => p.id === pedidoId);
+        const item = pedido?.items.find((i) => i.id === itemId);
+        if (!item) {
+          avisar({ tipo: "info", mensaje: MENSAJE_FUERA_DE_COCINA });
+        } else if (item.estado !== "PENDIENTE") {
+          avisar({ tipo: "info", mensaje: MENSAJE_YA_LISTO });
+        } else {
+          avisar({ tipo: "error", mensaje: MENSAJE_ERROR_LISTO });
+        }
       } else if ("sinSesion" in resultado) {
         tablero.cerrarSesion();
       } else {

@@ -15,7 +15,7 @@ const MENSAJES_LISTO: Partial<Record<number, string>> = {
 
 export type MarcarListoResultado =
   | { item: ItemListo }
-  | { yaListo: true }
+  | { conflicto: true }
   | { sinSesion: true }
   | { error: string };
 
@@ -83,7 +83,7 @@ export async function marcarItemListo(itemId: number): Promise<MarcarListoResult
       signal: AbortSignal.timeout(10_000),
     });
     if (response.status === 401) return { sinSesion: true };
-    if (response.status === 409) return { yaListo: true };
+    if (response.status === 409) return { conflicto: true };
     const mensaje = MENSAJES_LISTO[response.status];
     if (mensaje) return { error: mensaje };
     if (!response.ok) {
