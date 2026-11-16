@@ -73,28 +73,25 @@ it("devuelve errores por campo y solicita login cuando vence la sesión", async 
 it("ante 409 carga automáticamente las alternativas sin perder los filtros", async () => {
   const mesas = [{ mesaId: 4, numero: 4, capacidad: 4, zona: null }];
   fetchMock
-    .mockResolvedValueOnce(new Response(null, { status: 409 }))
-    .mockResolvedValueOnce(new Response(JSON.stringify(reserva)))
+    .mockResolvedValueOnce(
+      Response.json({ codigo: "MESA_NO_DISPONIBLE" }, { status: 409 }),
+    )
     .mockResolvedValueOnce(new Response(JSON.stringify(mesas)));
   expect(
     await modificarReservacion(reserva.reservacionId, campos),
   ).toHaveProperty("alternativas", mesas);
-  expect(String(fetchMock.mock.calls[2][0])).toContain(
+  expect(String(fetchMock.mock.calls[1][0])).toContain(
     "mesas-disponibles?fecha=2099-11-09&hora=14%3A00&personas=2",
   );
 });
 it("una edición concurrente exige recargar sin sugerir sobrescribirla", async () => {
-  fetchMock
-    .mockResolvedValueOnce(new Response(null, { status: 409 }))
-    .mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ ...reserva, version: "2026-11-15T13:00:00.000Z" }),
-      ),
-    );
+  fetchMock.mockResolvedValueOnce(
+    Response.json({ codigo: "RESERVA_MODIFICADA" }, { status: 409 }),
+  );
   expect(
     await modificarReservacion(reserva.reservacionId, campos),
   ).toHaveProperty("recargar", true);
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 it("el retorno de login admite solo rutas de edición internas", () => {
   expect(retornoLogin("/perfil/reservaciones/R-000045/editar")).toBe(
@@ -103,4 +100,26 @@ it("el retorno de login admite solo rutas de edición internas", () => {
   expect(retornoLogin("//evil.test/perfil/reservaciones/R-1/editar")).toBe(
     "/menu",
   );
+});
+
+it("rechaza horarios y mesas con datos inválidos de la API", async () => {
+  fetchMock.mockResolvedValueOnce(
+    Response.json({
+      ...reserva,
+      horarios: [{ diaSemana: 1, apertura: "99:99", cierre: "24:00" }],
+    }),
+  );
+  expect(await obtenerReservacion(reserva.reservacionId)).toHaveProperty(
+    "error",
+  );
+  fetchMock
+    .mockResolvedValueOnce(
+      Response.json({ codigo: "MESA_NO_DISPONIBLE" }, { status: 409 }),
+    )
+    .mockResolvedValueOnce(
+      Response.json([{ mesaId: 3, numero: 3, capacidad: 4, zona: 123 }]),
+    );
+  const resultado = await modificarReservacion(reserva.reservacionId, campos);
+  expect(resultado).toHaveProperty("error");
+  expect(resultado.alternativas).toBeUndefined();
 });

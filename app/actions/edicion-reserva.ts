@@ -7,7 +7,11 @@ import {
   type CamposEdicion,
   type ResultadoEdicion,
 } from "@/lib/edicion-reserva";
-import { validarFiltros, type MesaDisponible } from "@/lib/reservaciones";
+import {
+  validarVisita,
+  esMesa,
+  type MesaDisponible,
+} from "@/lib/reservaciones";
 
 export async function obtenerReservacion(
   id: string,
@@ -27,8 +31,8 @@ export async function modificarReservacion(
   datos: CamposEdicion,
 ): Promise<ResultadoEdicion> {
   if (!idReservaValido(id)) return { error: "Reservación no encontrada." };
-  const errores: Record<string, string> = validarFiltros({
-    sucursalId: "1",
+  // La API valida horarios y capacidad con datos actuales de la base.
+  const errores: Record<string, string> = validarVisita({
     fecha: datos.fecha,
     hora: datos.hora,
     personas: datos.personas,
@@ -70,15 +74,15 @@ export async function modificarReservacion(
           recargar: true,
         };
   if (resultado.estado !== 409) return resultado;
-  // Distingue un horario ocupado de una edición concurrente sin sobrescribir la versión.
-  const actual = await obtenerReservacion(id);
-  if (!actual.reserva) return actual;
-  if (
-    actual.reserva.version !== datos.version ||
-    actual.reserva.estado !== "CONFIRMADA"
-  )
+  if (resultado.codigo === "RESERVA_MODIFICADA")
     return {
       error: "La reservación cambió. Recargá sus datos antes de editar.",
+      recargar: true,
+    };
+  if (resultado.codigo !== "MESA_NO_DISPONIBLE")
+    return {
+      error:
+        "No pudimos confirmar el estado de la reservación. Recargá sus datos.",
       recargar: true,
     };
   const query = new URLSearchParams({
@@ -96,16 +100,7 @@ export async function modificarReservacion(
         resultado.error +
         " No pudimos cargar las alternativas. Intentá de nuevo.",
     };
-  if (
-    !Array.isArray(alternativas.datos) ||
-    !alternativas.datos.every(
-      (m) =>
-        m &&
-        Number.isInteger(m.mesaId) &&
-        Number.isInteger(m.numero) &&
-        Number.isInteger(m.capacidad),
-    )
-  )
+  if (!Array.isArray(alternativas.datos) || !alternativas.datos.every(esMesa))
     return { error: ERROR_GENERICO };
   return { error: resultado.error, alternativas: alternativas.datos };
 }

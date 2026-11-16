@@ -76,12 +76,16 @@ it("permite elegir una alternativa y reintentar manteniendo versión y filtros",
   fireEvent.click(
     await screen.findByRole("button", { name: "Mesa 7 · 4 personas" }),
   );
+  expect(screen.queryByText("Mesa ocupada.")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Personas"), {
+    target: { value: "3" },
+  });
   guardar();
   await screen.findByRole("status");
   expect(modificarReservacion).toHaveBeenLastCalledWith(reserva.reservacionId, {
     fecha: reserva.fecha,
     hora: reserva.hora,
-    personas: "2",
+    personas: "3",
     mesaId: 7,
     version: reserva.version,
   });
@@ -106,4 +110,20 @@ it("un conflicto de versión bloquea guardar y ofrece recargar", async () => {
     await screen.findByRole("link", { name: "Recargar datos actuales" }),
   ).toHaveAttribute("href", "/perfil/reservaciones/R-000045/editar");
   expect(screen.getByLabelText("Fecha")).toBeDisabled();
+});
+
+it("bloquea nuevos envíos cuando vence la sesión", async () => {
+  vi.mocked(modificarReservacion).mockResolvedValue({
+    sinSesion: true,
+    error: "Iniciá sesión.",
+  });
+  render(<EditarReservaForm reserva={reserva} />);
+  guardar();
+  await screen.findByRole("link", { name: "Iniciar sesión" });
+  expect(
+    screen.getByRole("button", { name: "Guardar cambios" }),
+  ).toBeDisabled();
+  expect(screen.getByLabelText("Fecha")).toBeDisabled();
+  fireEvent.submit(screen.getByRole("form", { name: "Modificar reservación" }));
+  expect(modificarReservacion).toHaveBeenCalledTimes(1);
 });

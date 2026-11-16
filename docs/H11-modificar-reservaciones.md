@@ -22,3 +22,11 @@ El backend registra el aviso interno mediante el servicio común. La integració
 Pruebas específicas: `npx vitest run test/edicion-reserva-actions.test.ts test/edicion-reserva-form.test.tsx`.
 
 Prueba manual: entrar con un cliente, abrir una reservación confirmada y cambiar horario/personas. Para provocar conflicto, ocupar ese mismo horario con otro cliente; se deben mostrar alternativas sin perder la reserva original. Abrir el mismo detalle en dos pestañas verifica el control de versión.
+
+## Ajustes del review
+
+- Seleccionar otra mesa limpia el error anterior. Cambiar fecha, hora o personas conserva la mesa elegida; el backend revalida su disponibilidad al guardar.
+- Una sesión vencida bloquea el formulario hasta iniciar sesión.
+- Se reutilizan FieldError y los validadores compartidos de visita, mesa y horarios; ya no se utiliza una sucursal ficticia.
+- La acción interpreta los códigos RESERVA_MODIFICADA y MESA_NO_DISPONIBLE del 409. Solo solicita alternativas cuando corresponde, sin consultar de nuevo el detalle.
+- El servidor de Next valida el formato de los datos; la API valida horarios, capacidad y disponibilidad con la información vigente de la base.

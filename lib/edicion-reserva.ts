@@ -1,3 +1,4 @@
+import { esHorarioSucursal } from "@/lib/reservaciones";
 import { esReservacion, type Reservacion } from "@/lib/confirmacion-reserva";
 import type { HorarioSucursal, MesaDisponible } from "@/lib/reservaciones";
 
@@ -46,16 +47,6 @@ export function esDetalleReserva(valor: unknown): valor is DetalleReserva {
     typeof dato.version === "string" &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(dato.version) &&
     Array.isArray(dato.horarios) &&
-    dato.horarios.every(
-      (h) =>
-        h &&
-        Number.isInteger(h.diaSemana) &&
-        h.diaSemana >= 0 &&
-        h.diaSemana <= 6 &&
-        typeof h.apertura === "string" &&
-        /^\d{2}:\d{2}$/.test(h.apertura) &&
-        typeof h.cierre === "string" &&
-        /^\d{2}:\d{2}$/.test(h.cierre),
-    )
+    dato.horarios.every(esHorarioSucursal)
   );
 }

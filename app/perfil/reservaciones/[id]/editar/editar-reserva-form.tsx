@@ -12,9 +12,10 @@ import {
   fechaLocal,
   formatoHora,
   horasDisponibles,
-  validarFiltros,
+  validarVisita,
   type MesaDisponible,
 } from "@/lib/reservaciones";
+import { FieldError } from "@/components/ui/error";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -34,27 +35,11 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
   const [cargando, setCargando] = useState(false);
   const enviando = useRef(false);
   const horas = horasDisponibles(fecha, reserva.horarios);
-  const campoError = (campo: string) =>
-    resultado.errores?.[campo] ? (
-      <p
-        id={campo + "-error"}
-        className="mt-2 text-sm text-red-300"
-        role="alert"
-      >
-        {resultado.errores[campo]}
-      </p>
-    ) : null;
   function limpiar() {
     setResultado({});
-    setMesa({
-      mesaId: reserva.mesaId,
-      numero: reserva.mesa,
-      capacidad: reserva.capacidad,
-      zona: null,
-    });
   }
   async function guardar() {
-    if (enviando.current) return;
+    if (enviando.current || resultado.sinSesion) return;
     if (!puedeModificarReserva(reserva)) {
       setResultado({
         error: "Solo podés modificar una reservación confirmada y próxima.",
@@ -62,10 +47,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
       });
       return;
     }
-    const errores = validarFiltros(
-      { sucursalId: String(reserva.sucursalId), fecha, hora, personas },
-      reserva.horarios,
-    );
+    const errores = validarVisita({ fecha, hora, personas }, reserva.horarios);
     if (Number(personas) > mesa.capacidad)
       errores.personas = `Esta mesa admite hasta ${mesa.capacidad} personas.`;
     if (Object.keys(errores).length) {
@@ -102,8 +84,8 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
           role="status"
           className="rounded-xl border border-green-800 bg-green-950/40 p-4 text-green-200"
         >
-          Tu reservación se modificó correctamente. Podés consultar el aviso con
-          los datos actualizados en tus notificaciones.
+          Tu reservación se modificó correctamente. Podés consultar el aviso
+          con los datos actualizados en tus notificaciones.
         </p>
         <ResumenReserva reserva={resultado.reserva} />
         <Link
@@ -136,7 +118,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
           noValidate
         >
           <fieldset
-            disabled={cargando || resultado.recargar}
+            disabled={cargando || resultado.recargar || resultado.sinSesion}
             className="space-y-6"
           >
             <legend className="mb-5 text-2xl">Nuevos datos</legend>
@@ -159,7 +141,10 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
                     resultado.errores?.fecha ? "fecha-error" : undefined
                   }
                 />
-                {campoError("fecha")}
+                <FieldError
+                  id="fecha-error"
+                  message={resultado.errores?.fecha}
+                />
               </div>
               <div>
                 <label htmlFor="hora" className="mb-2 block">
@@ -189,7 +174,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
                     </option>
                   ))}
                 </Select>
-                {campoError("hora")}
+                <FieldError id="hora-error" message={resultado.errores?.hora} />
               </div>
               <div>
                 <label htmlFor="personas" className="mb-2 block">
@@ -210,21 +195,24 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
                     resultado.errores?.personas ? "personas-error" : undefined
                   }
                 />
-                {campoError("personas")}
+                <FieldError
+                  id="personas-error"
+                  message={resultado.errores?.personas}
+                />
               </div>
             </div>
             <p className="text-sm text-zinc-300">
               Mesa seleccionada: {mesa.numero} · Capacidad: {mesa.capacidad}{" "}
               personas · Duración: 2 horas.
             </p>
-            {campoError("mesaId")}
+            <FieldError id="mesaId-error" message={resultado.errores?.mesaId} />
             {resultado.alternativas && (
               <section aria-label="Mesas alternativas" className="space-y-3">
                 <h3 className="text-xl">Elegí otra mesa disponible</h3>
                 {resultado.alternativas.length === 0 ? (
                   <p>
-                    No hay mesas disponibles para esos datos. Probá otra fecha u
-                    hora.
+                    No hay mesas disponibles para esos datos. Probá otra fecha
+                    u hora.
                   </p>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -232,7 +220,14 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
                       <Button
                         key={m.mesaId}
                         aria-pressed={mesa.mesaId === m.mesaId}
-                        onClick={() => setMesa(m)}
+                        onClick={() => {
+                          setMesa(m);
+                          setResultado((r) => ({
+                            ...r,
+                            error: undefined,
+                            errores: undefined,
+                          }));
+                        }}
                         className={
                           mesa.mesaId === m.mesaId
                             ? "ring-2 ring-orange-200 ring-offset-2 ring-offset-zinc-900"

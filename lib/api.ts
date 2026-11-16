@@ -7,6 +7,7 @@ export type Resultado<T> =
       error: string;
       sinSesion?: boolean;
       estado?: number;
+      codigo?: string;
       errores?: Record<string, string>;
     };
 
@@ -64,7 +65,7 @@ export async function llamar<T>(
     if (!response.ok) {
       if (detallarErrores) {
         const detalle =
-          response.status === 400
+          response.status === 400 || response.status === 409
             ? await response.json().catch(() => null)
             : null;
         const errores: Record<string, string> = {};
@@ -78,6 +79,9 @@ export async function llamar<T>(
           ok: false,
           error: mensajes[response.status] ?? ERROR_GENERICO,
           estado: response.status,
+          ...(typeof detalle?.codigo === "string"
+            ? { codigo: detalle.codigo }
+            : {}),
           errores,
         };
       }
