@@ -11,9 +11,10 @@ export function retornoLogin(valor: unknown): string {
     const url = new URL(valor, "https://losburle.local");
     if (
       url.origin !== "https://losburle.local" ||
-      !["/reservas/nueva", "/perfil/reservaciones", "/reservas"].includes(
+      (!["/reservas/nueva", "/perfil/reservaciones", "/reservas"].includes(
         url.pathname,
-      )
+      ) &&
+        !/^\/perfil\/reservaciones\/R-\d{1,10}\/editar$/.test(url.pathname))
     )
       return "/menu";
     return url.pathname + url.search;

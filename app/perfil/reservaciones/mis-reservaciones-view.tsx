@@ -93,7 +93,11 @@ export function MisReservacionesView() {
           </p>
           <div className="grid gap-5 sm:grid-cols-2">
             {respuesta.datos.datos.map((reserva) => (
-              <ResumenReserva key={reserva.reservacionId} reserva={reserva} />
+              <ResumenReserva
+                key={reserva.reservacionId}
+                reserva={reserva}
+                permitirEdicion
+              />
             ))}
           </div>
           <Paginacion

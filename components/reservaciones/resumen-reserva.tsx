@@ -1,8 +1,15 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatoFecha, formatoHora } from "@/lib/reservaciones";
 import type { Reservacion } from "@/lib/confirmacion-reserva";
 
-export function ResumenReserva({ reserva }: { reserva: Reservacion }) {
+export function ResumenReserva({
+  reserva,
+  permitirEdicion = false,
+}: {
+  reserva: Reservacion;
+  permitirEdicion?: boolean;
+}) {
   const detalles = [
     ["Sucursal", reserva.sucursal],
     ["Mesa", String(reserva.mesa)],
@@ -35,6 +42,14 @@ export function ResumenReserva({ reserva }: { reserva: Reservacion }) {
       <p className="mt-6 border-t border-zinc-800 pt-4 text-xs leading-relaxed text-zinc-400">
         Duración: 2 horas · Horario de El Salvador
       </p>
+      {permitirEdicion && reserva.estado === "CONFIRMADA" && (
+        <Link
+          href={`/perfil/reservaciones/${reserva.reservacionId}/editar`}
+          className="mt-5 inline-block rounded-full bg-[#FF7A1A] px-5 py-3 font-semibold text-[#101012] hover:bg-orange-400"
+        >
+          Modificar reservación
+        </Link>
+      )}
     </article>
   );
 }
