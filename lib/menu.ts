@@ -7,6 +7,8 @@ export type Platillo = {
   precio: number;
   imagenUrl: string | null;
   disponibilidad: number;
+  promedio?: number | null;
+  totalResenas?: number;
 };
 
 export type CategoriaMenu = { id: number; nombre: string; platillos: Platillo[] };

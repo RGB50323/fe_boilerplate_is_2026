@@ -14,6 +14,25 @@ function esMenu(valor: unknown): valor is MenuRespuesta {
   return Number.isInteger(menu.sucursalId) && Array.isArray(menu.categorias);
 }
 
+function absoluta(ruta: string | null, apiUrl: string): string | null {
+  if (!ruta) return null;
+  if (/^https?:\/\//.test(ruta)) return ruta;
+  return new URL(ruta, apiUrl).toString();
+}
+
+function conImagenes(menu: MenuRespuesta, apiUrl: string): MenuRespuesta {
+  return {
+    ...menu,
+    categorias: menu.categorias.map((categoria) => ({
+      ...categoria,
+      platillos: categoria.platillos.map((p) => ({
+        ...p,
+        imagenUrl: absoluta(p.imagenUrl, apiUrl),
+      })),
+    })),
+  };
+}
+
 export async function consultarMenu(
   sucursalId: number,
   filtros: FiltrosMenu,
@@ -44,7 +63,7 @@ export async function consultarMenu(
 
     const menu: unknown = await response.json();
     if (!esMenu(menu)) throw new Error("Respuesta de menú inválida.");
-    return { menu };
+        return { menu: conImagenes(menu, apiUrl) };
   } catch (error) {
     console.error("Error al cargar el menú:", error);
     return { error: "No pudimos cargar el menú" };

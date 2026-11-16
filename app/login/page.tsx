@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Fraunces } from "next/font/google";
 import { LoginForm } from "./login-form";
+import { retornoLogin } from "@/lib/retorno-login";
 
 export const metadata: Metadata = {
   title: "Iniciar sesión | Los Burle",
@@ -13,7 +14,12 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const siguiente = retornoLogin((await searchParams).next);
   return (
     <main className="grid min-h-dvh place-items-center bg-[#101012] px-4 py-6 text-zinc-100 sm:px-6 sm:py-8">
       <div className="grid w-full max-w-md grid-cols-1 overflow-hidden rounded-2xl border border-zinc-800 bg-[#18181b] lg:max-w-5xl lg:grid-cols-2">
@@ -33,7 +39,12 @@ export default function LoginPage() {
             Ingresá tu correo y contraseña para acceder a tu cuenta.
           </p>
 
-          <LoginForm />
+          {siguiente !== "/menu" && (
+            <p role="status" className="mb-5 text-sm text-orange-200">
+              Iniciá sesión para continuar con tu reservación.
+            </p>
+          )}
+          <LoginForm siguiente={siguiente} />
         </section>
 
         <div className="relative hidden lg:block">

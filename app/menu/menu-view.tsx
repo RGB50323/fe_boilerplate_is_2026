@@ -11,9 +11,10 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { SearchBar } from "@/components/ui/search-bar";
-import { CardPlatillo } from "@/components/ui/menu/card-platillo";
-import { PlatillosSkeleton } from "@/components/ui/menu/platillos-skeleton";
-import { RangoPrecio } from "@/components/ui/menu/rango-precio";
+import { CardPlatillo } from "@/components/menu/card-platillo";
+import { DrawerResenas } from "@/components/resenas/drawer-resenas";
+import { PlatillosSkeleton } from "@/components/menu/platillos-skeleton";
+import { RangoPrecio } from "@/components/menu/rango-precio";
 import {
   FILTROS_VACIOS,
   filtrosAQuery,
@@ -24,6 +25,11 @@ import {
   type MenuRespuesta,
 } from "@/lib/menu";
 import { SUCURSALES } from "@/lib/sucursales";
+import { CarritoLlevar } from "@/components/menu/carrito-llevar";
+import { useCarritoLlevar } from "@/components/menu/use-carrito-llevar";
+import { cantidadDe } from "@/lib/carrito-llevar";
+import { AccionesHeader } from "@/components/menu/acciones-header";
+
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -38,7 +44,15 @@ function sucursalDe(qs: string): number {
 
 type Resultado = { clave: string; menu?: MenuRespuesta };
 
-function Menu({ autenticado }: { autenticado: boolean }) {
+function Menu({
+  autenticado,
+  esGerente,
+  esMesero,
+}: {
+  autenticado: boolean;
+  esGerente: boolean;
+  esMesero: boolean;
+}) {
   const router = useRouter();
   const qs = useSearchParams().toString();
   const sucursalId = sucursalDe(qs);
@@ -53,7 +67,14 @@ function Menu({ autenticado }: { autenticado: boolean }) {
   >([]);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [reintento, setReintento] = useState(0);
+  const [conResenas, setConResenas] = useState<{
+    id: number;
+    nombre: string;
+  } | null>(null);
   const [cerrandoSesion, cerrarSesion] = useTransition();
+
+  const carrito = useCarritoLlevar(sucursalId);
+  const puedePedir = !esGerente && !esMesero;
 
   const errores = validarFiltros(entrada);
   const clave = `${qs}#${reintento}`;
@@ -161,7 +182,7 @@ function Menu({ autenticado }: { autenticado: boolean }) {
       {/* Encabezado */}
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4">
         <p className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <Dropdown
             id="sucursal"
             className="max-sm:min-w-28"
@@ -175,28 +196,18 @@ function Menu({ autenticado }: { autenticado: boolean }) {
             }))}
           />
           {autenticado && <CampanaNotificaciones enLinea />}
-          {autenticado ? (
-            <Button
-              type="button"
-              disabled={cerrandoSesion}
-              onClick={() =>
-                cerrarSesion(async () => {
-                  await logout();
-                })
-              }
-              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
-            >
-              {cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="whitespace-nowrap px-4 py-2 text-sm sm:px-5 sm:py-3"
-            >
-              Iniciar sesión
-            </Button>
-          )}
+          <AccionesHeader
+            autenticado={autenticado}
+            esGerente={esGerente}
+            esMesero={esMesero}
+            cerrandoSesion={cerrandoSesion}
+            onCerrarSesion={() =>
+              cerrarSesion(async () => {
+                await logout();
+              })
+            }
+            onIniciarSesion={() => router.push("/login")}
+          />
         </div>
       </header>
 
@@ -317,24 +328,75 @@ function Menu({ autenticado }: { autenticado: boolean }) {
             <ul className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {cat.platillos.map((p) => (
                 <li key={p.id}>
-                  <CardPlatillo platillo={p} />
+                  <CardPlatillo
+                    platillo={p}
+                    onVerResenas={() =>
+                      setConResenas({ id: p.id, nombre: p.nombre })
+                    }
+                    enCarrito={cantidadDe(carrito.lineas, p.id)}
+                    onAgregar={
+                      puedePedir ? () => carrito.agregar(p) : undefined
+                    }
+                  />
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </section>
+
+      {carrito.vaciado && (
+        <div
+          role="status"
+          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-xl items-center justify-between gap-4 rounded-xl border border-orange-400/40 bg-[#18181b] p-4 text-sm text-orange-200 shadow-2xl"
+        >
+          <p>Cambiaste de sucursal, por eso vaciamos tu carrito.</p>
+          <button
+            type="button"
+            onClick={carrito.descartarAviso}
+            className="cursor-pointer underline"
+          >
+            Entendido
+          </button>
+        </div>
+      )}
+      {puedePedir && (
+        <CarritoLlevar
+          sucursalId={sucursalId}
+          lineas={carrito.lineas}
+          onCambiarCantidad={carrito.cambiarCantidad}
+          onCambiarNota={carrito.cambiarNota}
+          onQuitar={carrito.quitar}
+        />
+      )}
+
+      <DrawerResenas
+        platillo={conResenas}
+        onCerrar={() => setConResenas(null)}
+      />
     </div>
   );
 }
 
-export function MenuView({ autenticado }: { autenticado: boolean }) {
+export function MenuView({
+  autenticado,
+  esGerente = false,
+  esMesero = false,
+}: {
+  autenticado: boolean;
+  esGerente?: boolean;
+  esMesero?: boolean;
+}) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando menú..." />}>
-        <Menu autenticado={autenticado} />
+        <Menu
+          autenticado={autenticado}
+          esGerente={esGerente}
+          esMesero={esMesero}
+        />
       </Suspense>
     </main>
   );
