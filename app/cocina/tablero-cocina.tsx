@@ -79,6 +79,7 @@ export function TableroCocina({ socketUrl, token, sucursal }: Props) {
     avisos,
     reintentar,
     descartarAviso,
+    marcarListo,
   } = useTableroCocina({ socketUrl, token });
 
   return (
@@ -149,7 +150,7 @@ export function TableroCocina({ socketUrl, token, sucursal }: Props) {
           >
             {pedidos.map((pedido) => (
               <li key={pedido.id} className="h-full">
-                <ComandaCard pedido={pedido} ahora={ahora} />
+                <ComandaCard pedido={pedido} ahora={ahora} onMarcarListo={marcarListo} />
               </li>
             ))}
           </ol>

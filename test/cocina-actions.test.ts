@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { listarPedidosCocina } from "@/app/actions/cocina";
+import { listarPedidosCocina, marcarItemListo } from "@/app/actions/cocina";
 import { getSession } from "@/lib/session";
 import { crearPedido } from "./cocina-helpers";
 
@@ -59,5 +59,64 @@ describe("listarPedidosCocina", () => {
 
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
     await expect(listarPedidosCocina()).resolves.toHaveProperty("error");
+  });
+});
+
+describe("marcarItemListo", () => {
+  it("hace PATCH /cocina/items/{id}/listo sin cuerpo y devuelve el ítem", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({ itemId: 301, estado: "LISTO", listoEn: "12:18", pedidoId: 120, pedidoEstado: "LISTO" }),
+    );
+
+    await expect(marcarItemListo(301)).resolves.toEqual({
+      item: { itemId: 301, listoEn: "12:18", pedidoId: 120, pedidoEstado: "LISTO" },
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe("http://localhost:3000/api/v1/cocina/items/301/listo");
+    expect(init?.method).toBe("PATCH");
+    expect(init?.body).toBeUndefined();
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer token-123");
+  });
+
+  it("un 409 se devuelve como conflicto, sea ítem ya listo o pedido fuera de cocina", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ message: "Este platillo ya está listo." }, { status: 409 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ conflicto: true });
+
+    fetchMock.mockResolvedValueOnce(Response.json({ message: "El pedido no está en cocina." }, { status: 409 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ conflicto: true });
+  });
+
+  it("devuelve sinSesion sin token o con 401", async () => {
+    sesion.mockResolvedValueOnce(undefined);
+    await expect(marcarItemListo(301)).resolves.toEqual({ sinSesion: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ sinSesion: true });
+  });
+
+  it("devuelve un mensaje breve ante 403, 404, 500, red o respuesta inválida", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ error: "No tienes permiso para marcar este platillo." });
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
+    await expect(marcarItemListo(301)).resolves.toEqual({ error: "Este platillo ya no existe en la comanda." });
+
+    const generico = { error: "No pudimos marcar el platillo. Intenta de nuevo" };
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }));
+    await expect(marcarItemListo(301)).resolves.toEqual(generico);
+
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    await expect(marcarItemListo(301)).resolves.toEqual(generico);
+
+    fetchMock.mockResolvedValueOnce(Response.json({ itemId: 999, estado: "LISTO" }));
+    await expect(marcarItemListo(301)).resolves.toEqual(generico);
+  });
+
+  it("rechaza ids inválidos sin llamar a la API", async () => {
+    await expect(marcarItemListo(0)).resolves.toHaveProperty("error");
+    await expect(marcarItemListo(1.5)).resolves.toHaveProperty("error");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
