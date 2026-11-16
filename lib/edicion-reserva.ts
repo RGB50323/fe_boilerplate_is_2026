@@ -22,6 +22,17 @@ export type ResultadoEdicion = {
   recargar?: boolean;
   alternativas?: MesaDisponible[];
 };
+export function puedeModificarReserva(
+  reserva: Pick<Reservacion, "estado" | "fecha" | "hora">,
+  ahora = new Date(),
+): boolean {
+  return (
+    reserva.estado === "CONFIRMADA" &&
+    new Date(`${reserva.fecha}T${reserva.hora}:00-06:00`).getTime() >
+      ahora.getTime()
+  );
+}
+
 export const idReservaValido = (id: string) =>
   /^R-\d{1,10}$/.test(id) &&
   Number(id.slice(2)) > 0 &&

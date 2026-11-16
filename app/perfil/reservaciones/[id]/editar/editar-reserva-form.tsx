@@ -3,7 +3,11 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { modificarReservacion } from "@/app/actions/edicion-reserva";
-import type { DetalleReserva, ResultadoEdicion } from "@/lib/edicion-reserva";
+import {
+  puedeModificarReserva,
+  type DetalleReserva,
+  type ResultadoEdicion,
+} from "@/lib/edicion-reserva";
 import {
   fechaLocal,
   formatoHora,
@@ -51,6 +55,13 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
   }
   async function guardar() {
     if (enviando.current) return;
+    if (!puedeModificarReserva(reserva)) {
+      setResultado({
+        error: "Solo podés modificar una reservación confirmada y próxima.",
+        recargar: true,
+      });
+      return;
+    }
     const errores = validarFiltros(
       { sucursalId: String(reserva.sucursalId), fecha, hora, personas },
       reserva.horarios,
@@ -109,8 +120,11 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
         <h2 className="mb-3 text-xl">Tu reservación actual</h2>
         <ResumenReserva reserva={reserva} />
       </section>
-      {reserva.estado !== "CONFIRMADA" ? (
-        <p role="alert">Solo podés modificar una reservación confirmada.</p>
+      {!puedeModificarReserva(reserva) ? (
+        <p role="alert">
+          Solo podés modificar una reservación confirmada que todavía no haya
+          comenzado.
+        </p>
       ) : (
         <form
           onSubmit={(event) => {
