@@ -1,18 +1,24 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
+import { leerPayload } from "@/lib/roles";
 
 export const SESSION_COOKIE = "session";
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const DURACION_POR_DEFECTO_MS = 15 * 60 * 1000;
 
-// Guarda el token de sesión en una cookie httpOnly (no accesible desde JS del cliente).
+// La cookie vence junto con el access token del backend.
 export async function createSession(token: string) {
+  const exp = leerPayload(token)?.exp;
+  const expires =
+    typeof exp === "number"
+      ? new Date(exp * 1000)
+      : new Date(Date.now() + DURACION_POR_DEFECTO_MS);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    expires: new Date(Date.now() + SESSION_DURATION_MS),
+    expires,
   });
 }
 
