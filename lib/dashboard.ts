@@ -11,6 +11,14 @@ export type VentasSucursal = {
   nombre: string;
   ventas: number;
   pedidos: number;
+  ticketPromedio: number; // ventas / pedidos, 2 decimales; 0 sin pedidos (lo calcula el backend)
+};
+
+// Totales de la selección (todas las sucursales o la elegida), del backend.
+export type TotalGeneral = {
+  ventas: number;
+  pedidos: number;
+  ticketPromedio: number;
 };
 
 export type PlatilloVendido = {
@@ -33,6 +41,7 @@ export type DashboardRespuesta = {
   desde: string;
   hasta: string;
   sucursales: VentasSucursal[];
+  totalGeneral: TotalGeneral;
   platillos: PlatilloVendido[];
   horariosPico: HorarioPicoSucursal[];
 };
@@ -161,7 +170,7 @@ export function ticketPromedio(ventas: number, pedidos: number): number {
   return Math.round((ventas * 100) / pedidos) / 100;
 }
 
-export function resumenGeneral(sucursales: VentasSucursal[]) {
+export function resumenGeneral(sucursales: Pick<VentasSucursal, "ventas" | "pedidos">[]) {
   const ventas = redondear(sucursales.reduce((t, s) => t + s.ventas, 0));
   const pedidos = sucursales.reduce((t, s) => t + s.pedidos, 0);
   return { ventas, pedidos, ticket: ticketPromedio(ventas, pedidos) };
@@ -275,40 +284,29 @@ function celdaCsv(valor: string | number): string {
   return /[",\n\r]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
 }
 
-export const ENCABEZADO_CSV_VENTAS = [
-  "Fecha",
-  "Hora",
-  "Pedido",
-  "Sucursal",
-  "Tipo",
-  "Artículos",
-  "Subtotal",
-  "Descuentos",
-  "Venta",
-];
+export const ENCABEZADO_CSV_SUCURSALES = ["Sucursal", "Ventas", "Pedidos", "Ticket promedio"];
 
-// Mismo formato que debe devolver GET /dashboard/ventas/exportar del backend.
-export function generarCsvVentas(ventas: VentaConfirmada[]): string {
-  const filas: (string | number)[][] = [
-    ENCABEZADO_CSV_VENTAS,
-    ...ventas.map((v) => {
-      const { fecha, hora } = fechaHoraLocal(v.fecha);
-      return [
-        fecha,
-        hora,
-        etiquetaPedido(v),
-        v.sucursal,
-        TIPOS_PEDIDO[v.tipo] ?? v.tipo,
-        v.articulos,
-        redondear(v.subtotal).toFixed(2),
-        redondear(v.descuentos).toFixed(2),
-        redondear(v.venta).toFixed(2),
-      ];
-    }),
+// Criterio 14: el CSV coincide con la tabla "Ventas por sucursal": una fila por
+// sucursal y la fila "Total general". Mismo formato que devuelve
+// GET /dashboard/ventas/exportar del backend.
+export function generarCsvSucursales(
+  datos: Pick<DashboardRespuesta, "sucursales" | "totalGeneral">,
+): string {
+  const fila = (nombre: string, t: TotalGeneral) => [
+    nombre,
+    redondear(t.ventas).toFixed(2),
+    t.pedidos,
+    redondear(t.ticketPromedio).toFixed(2),
   ];
-  return filas.map((fila) => fila.map(celdaCsv).join(",")).join("\r\n");
+  return [
+    ENCABEZADO_CSV_SUCURSALES,
+    ...datos.sucursales.map((s) => fila(s.nombre, s)),
+    fila("Total general", datos.totalGeneral),
+  ]
+    .map((f) => f.map(celdaCsv).join(","))
+    .join("\r\n");
 }
 
 export function nombreArchivoCsv(rango: { desde: string; hasta: string }) {
-  return `ventas-confirmadas_${rango.desde}_${rango.hasta}.csv`;
+  return `ventas-por-sucursal_${rango.desde}_${rango.hasta}.csv`;
 }

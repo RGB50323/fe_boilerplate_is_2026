@@ -46,9 +46,10 @@ const dashboard: DashboardRespuesta = {
   desde: "2026-11-01",
   hasta: "2026-11-08",
   sucursales: [
-    { sucursalId: 1, nombre: "Escalón", ventas: 8120, pedidos: 640 },
-    { sucursalId: 2, nombre: "Santa Tecla", ventas: 0, pedidos: 0 },
+    { sucursalId: 2, nombre: "Santa Tecla", ventas: 0, pedidos: 0, ticketPromedio: 0 },
+    { sucursalId: 1, nombre: "Escalón", ventas: 8120, pedidos: 640, ticketPromedio: 12.69 },
   ],
+  totalGeneral: { ventas: 8120, pedidos: 640, ticketPromedio: 12.69 },
   platillos,
   horariosPico: [
     {
@@ -67,7 +68,8 @@ const dashboard: DashboardRespuesta = {
 
 const sinVentas: DashboardRespuesta = {
   ...dashboard,
-  sucursales: dashboard.sucursales.map((s) => ({ ...s, ventas: 0, pedidos: 0 })),
+  sucursales: dashboard.sucursales.map((s) => ({ ...s, ventas: 0, pedidos: 0, ticketPromedio: 0 })),
+  totalGeneral: { ventas: 0, pedidos: 0, ticketPromedio: 0 },
   platillos: [],
   horariosPico: [],
 };
@@ -139,6 +141,23 @@ describe("dashboard de ventas", () => {
     expect(mocks.consultarDashboard).toHaveBeenCalledWith(filtros);
     expect(mocks.consultarVentas).toHaveBeenCalledWith(filtros, 1);
     expect(screen.getByRole("button", { name: "Semana" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("muestra la tabla por sucursal con el ticket y el total general del backend", async () => {
+    render(<DashboardView />);
+    const seccion = within(
+      (await screen.findByRole("heading", { name: "Ventas por sucursal" })).closest("section")!,
+    );
+    const filas = seccion.getAllByRole("row").slice(1);
+    // De mayor a menor venta, y al final el total general.
+    expect(filas.map((f) => within(f).getByRole("rowheader").textContent)).toEqual([
+      "Escalón",
+      "Santa Tecla",
+      "Total general",
+    ]);
+    expect(within(filas[0]).getByText("$12.69")).toBeInTheDocument();
+    expect(within(filas[1]).getAllByText("$0.00")).toHaveLength(2);
+    expect(within(filas[2]).getByText("$8,120.00")).toBeInTheDocument();
   });
 
   describe("ventas confirmadas", () => {
@@ -352,16 +371,16 @@ describe("dashboard de ventas", () => {
   });
 
   describe("exportar", () => {
-    it("descarga el CSV de ventas confirmadas con los filtros actuales", async () => {
+    it("descarga el CSV de ventas por sucursal con los filtros actuales", async () => {
       mocks.params.current = new URLSearchParams("periodo=semana&sucursal=1");
       const crear = vi.fn<(b: Blob) => string>(() => "blob:csv");
       vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: crear, revokeObjectURL: vi.fn() }));
       const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
       const fetchMock = vi.fn().mockResolvedValue(
-        new Response("Fecha,Hora\r\n08/11/2026,12:05", {
+        new Response("Sucursal,Ventas,Pedidos,Ticket promedio\r\nEscalón,8120.00,640,12.69", {
           headers: {
             "Content-Type": "text/csv; charset=utf-8",
-            "Content-Disposition": 'attachment; filename="ventas-confirmadas_x.csv"',
+            "Content-Disposition": 'attachment; filename="ventas-por-sucursal_x.csv"',
           },
         }),
       );
@@ -372,13 +391,13 @@ describe("dashboard de ventas", () => {
       fireEvent.click(screen.getByRole("button", { name: /Exportar CSV/ }));
 
       expect(
-        await screen.findByText("Descargaste las ventas confirmadas en CSV."),
+        await screen.findByText("Descargaste las ventas por sucursal en CSV."),
       ).toBeInTheDocument();
       expect(fetchMock).toHaveBeenCalledWith("/dashboard/exportar?periodo=semana&sucursal=1", {
         cache: "no-store",
       });
       expect(click).toHaveBeenCalledTimes(1);
-      expect(await crear.mock.calls[0][0].text()).toContain("08/11/2026,12:05");
+      expect(await crear.mock.calls[0][0].text()).toContain("Escalón,8120.00,640,12.69");
     });
 
     it("si el servidor niega la descarga muestra el motivo", async () => {

@@ -27,6 +27,7 @@ const respuestaApi = {
   desde: "2026-10-01",
   hasta: "2026-10-31",
   sucursales: [],
+  totalGeneral: { ventas: 0, pedidos: 0, ticketPromedio: 0 },
   platillos: [],
   horariosPico: [],
 };
@@ -165,10 +166,10 @@ describe("GET /dashboard/exportar", () => {
   const pedir = (qs: string) =>
     exportar(new NextRequest(`http://localhost/dashboard/exportar?${qs}`));
 
-  it("descarga el CSV del backend como archivo", async () => {
+  it("descarga el CSV de ventas por sucursal del backend como archivo", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(new Response("Fecha,Hora\r\n08/11/2026,12:05", { status: 200 }));
+      .mockResolvedValue(new Response("Sucursal,Ventas\r\nCentro,8120.00", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await pedir("periodo=rango&desde=2026-10-01&hasta=2026-10-31&sucursal=2");
@@ -176,9 +177,9 @@ describe("GET /dashboard/exportar", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
     expect(res.headers.get("Content-Disposition")).toBe(
-      'attachment; filename="ventas-confirmadas_2026-10-01_2026-10-31.csv"',
+      'attachment; filename="ventas-por-sucursal_2026-10-01_2026-10-31.csv"',
     );
-    expect(await textoConBom(res)).toBe("﻿Fecha,Hora\r\n08/11/2026,12:05");
+    expect(await textoConBom(res)).toBe("﻿Sucursal,Ventas\r\nCentro,8120.00");
     expect(String(fetchMock.mock.calls[0][0])).toBe(
       "http://api.test/api/v1/dashboard/ventas/exportar?desde=2026-10-01&hasta=2026-10-31&sucursalId=2",
     );
@@ -196,17 +197,16 @@ describe("GET /dashboard/exportar", () => {
     expect(res.status).toBe(400);
   });
 
-  it("con datos de prueba genera el CSV sin llamar al backend", async () => {
+  it("con datos de prueba genera una fila por sucursal y el total", async () => {
     vi.stubEnv("DASHBOARD_DATOS_PRUEBA", "true");
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const res = await pedir("periodo=rango&desde=2026-10-01&hasta=2026-10-02");
+    const res = await pedir("periodo=rango&desde=2026-10-01&hasta=2026-10-02&sucursal=1");
     const lineas = (await textoConBom(res)).split("\r\n");
-    expect(lineas[0]).toBe(
-      "﻿Fecha,Hora,Pedido,Sucursal,Tipo,Artículos,Subtotal,Descuentos,Venta",
-    );
-    expect(lineas.length).toBeGreaterThan(1);
+    expect(lineas[0]).toBe("\uFEFFSucursal,Ventas,Pedidos,Ticket promedio");
+    expect(lineas).toHaveLength(3);
+    expect(lineas[2]).toMatch(/^Total general,/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

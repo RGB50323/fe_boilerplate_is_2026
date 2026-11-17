@@ -42,7 +42,6 @@ import {
   nombreArchivoCsv,
   ordenarPlatillos,
   rangoDelPeriodo,
-  resumenGeneral,
   validarRango,
   type DashboardRespuesta,
   type ErroresRango,
@@ -100,7 +99,7 @@ function Dashboard() {
   const qs = useSearchParams().toString();
   const filtros = useMemo(() => filtrosDe(qs), [qs]);
 
-  const [mostrarRango, setMostrarRango] = useState(filtros.periodo === "rango");
+  const [mostrarRango, setMostrarRango] = useState(false);
   const [rangoEntrada, setRangoEntrada] = useState(() => rangoDelPeriodo(filtros));
   const [erroresRango, setErroresRango] = useState<ErroresRango>({});
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -148,6 +147,7 @@ function Dashboard() {
   function elegirPeriodo(periodo: Periodo) {
     setErroresRango({});
     if (periodo === "rango") {
+      // El rango personalizado se aplica con el botón "Aplicar" (criterio 7).
       setRangoEntrada(rangoDelPeriodo(filtros));
       setMostrarRango(true);
       return;
@@ -199,7 +199,7 @@ function Dashboard() {
       enlace.click();
       enlace.remove();
       URL.revokeObjectURL(url);
-      avisar("Descargaste las ventas confirmadas en CSV.", "success");
+      avisar("Descargaste las ventas por sucursal en CSV.", "success");
     } catch (error) {
       console.error("Error al exportar CSV:", error);
       avisar(
@@ -220,7 +220,7 @@ function Dashboard() {
 
   const rango = rangoDelPeriodo(filtros);
   const periodoActivo: Periodo = mostrarRango ? "rango" : filtros.periodo;
-  const hayVentas = Boolean(dashboard && resumenGeneral(dashboard.sucursales).pedidos > 0);
+  const hayVentas = Boolean(dashboard && dashboard.totalGeneral.pedidos > 0);
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -572,7 +572,8 @@ function Contenido({
   verTodos: boolean;
   onVerTodos: (v: boolean) => void;
 }) {
-  const total = resumenGeneral(dashboard.sucursales);
+  const total = dashboard.totalGeneral;
+  const sucursales = [...dashboard.sucursales].sort((a, b) => b.ventas - a.ventas);
   const platillos = ordenarPlatillos(dashboard.platillos);
   const visibles = verTodos ? platillos : platillos.slice(0, LIMITE_PLATILLOS);
 
@@ -592,7 +593,7 @@ function Contenido({
         />
         <Indicador
           titulo="Ticket promedio"
-          valor={formatoMoneda(total.ticket)}
+          valor={formatoMoneda(total.ticketPromedio)}
           detalle="Ventas ÷ pedidos"
         />
       </div>
@@ -601,6 +602,44 @@ function Contenido({
         <EmptyState mensaje="Sin ventas en el periodo seleccionado" />
       ) : (
         <>
+          {}
+          <section aria-labelledby="titulo-sucursales">
+            <EncabezadoSeccion
+              id="titulo-sucursales"
+              titulo="Ventas por sucursal"
+            />
+            <div className="overflow-x-auto rounded-2xl bg-[#2b2b2f] p-4 font-sans sm:p-6">
+              <table className="w-full text-left" aria-labelledby="titulo-sucursales">
+                <thead className="border-b border-zinc-700 text-sm text-zinc-400">
+                  <tr>
+                    <th scope="col" className={th}>Sucursal</th>
+                    <th scope="col" className={thNum}>Ventas</th>
+                    <th scope="col" className={thNum}>Pedidos</th>
+                    <th scope="col" className={thNum}>Ticket promedio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sucursales.map((s) => (
+                    <tr key={s.sucursalId} className="border-b border-zinc-800">
+                      <th scope="row" className={`${td} font-normal`}>{s.nombre}</th>
+                      <td className={tdNum}>{formatoMoneda(s.ventas)}</td>
+                      <td className={tdNum}>{formatoEntero(s.pedidos)}</td>
+                      <td className={tdNum}>{formatoMoneda(s.ticketPromedio)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-[#18181b] font-semibold">
+                    <th scope="row" className="rounded-l-lg px-3 py-3 font-semibold">Total general</th>
+                    <td className={tdNum}>{formatoMoneda(total.ventas)}</td>
+                    <td className={tdNum}>{formatoEntero(total.pedidos)}</td>
+                    <td className={`${tdNum} rounded-r-lg pr-3`}>{formatoMoneda(total.ticketPromedio)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+
           {lista}
 
           {/* Platillos más vendidos (criterios 8 y 9) */}
@@ -608,7 +647,6 @@ function Contenido({
             <EncabezadoSeccion
               id="titulo-platillos"
               titulo="Platillos más vendidos"
-              detalle={`${verTodos ? "Todos" : "Top 10"} · ordenado por cantidad; si empatan, primero el de mayor monto`}
             >
               {platillos.length > LIMITE_PLATILLOS && (
                 <button

@@ -1,5 +1,7 @@
 import {
   VENTAS_POR_PAGINA,
+  resumenGeneral,
+  ticketPromedio,
   type DashboardRespuesta,
   type TipoPedido,
   type VentaConfirmada,
@@ -175,18 +177,24 @@ export function datosDePrueba(
     }
   }
 
+  const porSucursal = sucursales.map((s) => {
+    const propias = ventas.filter((v) => v.sucursalId === s.id);
+    const venta = r2(propias.reduce((t, v) => t + v.venta, 0));
+    return {
+      sucursalId: s.id,
+      nombre: s.nombre,
+      ventas: venta,
+      pedidos: propias.length,
+      ticketPromedio: ticketPromedio(venta, propias.length),
+    };
+  });
+  const total = resumenGeneral(porSucursal);
+
   return {
     desde: consulta.desde,
     hasta: consulta.hasta,
-    sucursales: sucursales.map((s) => {
-      const propias = ventas.filter((v) => v.sucursalId === s.id);
-      return {
-        sucursalId: s.id,
-        nombre: s.nombre,
-        ventas: r2(propias.reduce((t, v) => t + v.venta, 0)),
-        pedidos: propias.length,
-      };
-    }),
+    sucursales: porSucursal,
+    totalGeneral: { ...total, ticketPromedio: total.ticket },
     platillos: [...platillos.values()].sort(
       (a, b) => b.cantidad - a.cantidad || b.monto - a.monto,
     ),
