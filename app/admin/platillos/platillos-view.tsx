@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -17,6 +17,7 @@ import type { Pagina } from "@/lib/paginacion";
 import type { Platillo } from "@/lib/platillos";
 import { TablaPlatillos } from "@/components/platillos/tabla-platillos";
 import { DialogoDeshabilitarPlatillo } from "@/components/platillos/dialogo-deshabilitar-platillo";
+import { rutaConSucursal } from "@/lib/navegacion-sucursal";
 
 type Aviso = { id: number; texto: string; variante: "success" | "error" };
 
@@ -29,11 +30,13 @@ const BOTON_SECUNDARIO =
 
 export function PlatillosView({
   sucursalId,
+  sucursalNombre,
   inicial,
   errorInicial,
   guardado,
 }: {
   sucursalId: number;
+  sucursalNombre?: string;
   inicial: Pagina<Platillo>;
   errorInicial?: string;
   guardado: boolean;
@@ -57,7 +60,11 @@ export function PlatillosView({
   );
 
   useEffect(() => {
-    if (guardado) router.replace("/admin/platillos");
+    if (guardado) {
+      router.replace(
+        rutaConSucursal("/admin/platillos", window.location.search),
+      );
+    }
   }, [guardado, router]);
 
   useEffect(() => () => clearTimeout(temporizador.current), []);
@@ -143,7 +150,10 @@ export function PlatillosView({
   return (
     <main className="py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl sm:text-5xl">Administración de platillos</h1>
+        <h1 className="text-3xl sm:text-5xl">
+          Administración de platillos —{" "}
+          {sucursalNombre ?? `Sucursal ${sucursalId}`}
+        </h1>
         <div className="flex flex-wrap items-center gap-3">
           <Link href="/admin/categorias" className={BOTON_SECUNDARIO}>
             Gestionar categorías
