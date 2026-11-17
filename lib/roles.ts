@@ -1,7 +1,10 @@
 export const ROLES_COCINA = ["COCINA", "GERENTE", "GERENTE_GENERAL"] as const;
 
+export const ROLES_MESERO = ["MESERO"] as const;
+
 export const ROLES_POR_RUTA: Record<string, readonly string[]> = {
   "/cocina": ROLES_COCINA,
+  "/mesero/entregas": ROLES_MESERO,
 };
 
 type Payload = Record<string, unknown>;
