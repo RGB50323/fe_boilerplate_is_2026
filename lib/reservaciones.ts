@@ -92,7 +92,11 @@ export function validarFiltros(
   horarios?: HorarioSucursal[],
   ahora = new Date(),
 ): ErroresDisponibilidad {
-  const errores: ErroresDisponibilidad = {};
+  const errores: ErroresDisponibilidad = validarVisita(
+    filtros,
+    horarios,
+    ahora,
+  );
   if (
     !/^\d+$/.test(filtros.sucursalId) ||
     Number(filtros.sucursalId) < 1 ||
@@ -100,10 +104,20 @@ export function validarFiltros(
   ) {
     errores.sucursalId = "Seleccioná una sucursal válida.";
   }
+  return errores;
+}
+
+export function validarVisita(
+  filtros: Pick<FiltrosDisponibilidad, "fecha" | "hora" | "personas">,
+  horarios?: HorarioSucursal[],
+  ahora = new Date(),
+): ErroresDisponibilidad {
+  const errores: ErroresDisponibilidad = {};
   if (!fechaValida(filtros.fecha)) {
     errores.fecha = "Ingresá una fecha válida.";
   } else if (filtros.fecha < fechaLocal(ahora)) {
-    errores.fecha = "Horario no válido: la fecha no puede estar en el pasado.";
+    errores.fecha =
+      "Horario no válido: la fecha no puede estar en el pasado.";
   }
   if (!/^(?:[01]\d|2[0-3]):(?:00|30)$/.test(filtros.hora)) {
     errores.hora = "Seleccioná una hora en intervalos de 30 minutos.";
@@ -143,4 +157,29 @@ export function formatoFecha(fecha: string): string {
     month: "short",
     year: "numeric",
   }).format(new Date(`${fecha}T00:00:00Z`));
+}
+
+export function esMesa(valor: unknown): valor is MesaDisponible {
+  if (!valor || typeof valor !== "object") return false;
+  const mesa = valor as Record<string, unknown>;
+  return (
+    Number.isInteger(mesa.mesaId) &&
+    Number.isInteger(mesa.numero) &&
+    Number.isInteger(mesa.capacidad) &&
+    (mesa.zona === null || typeof mesa.zona === "string")
+  );
+}
+
+export function esHorarioSucursal(valor: unknown): valor is HorarioSucursal {
+  if (!valor || typeof valor !== "object") return false;
+  const horario = valor as Record<string, unknown>;
+  const horaValida = (hora: unknown) =>
+    typeof hora === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hora);
+  return (
+    Number.isInteger(horario.diaSemana) &&
+    Number(horario.diaSemana) >= 0 &&
+    Number(horario.diaSemana) <= 6 &&
+    horaValida(horario.apertura) &&
+    horaValida(horario.cierre)
+  );
 }

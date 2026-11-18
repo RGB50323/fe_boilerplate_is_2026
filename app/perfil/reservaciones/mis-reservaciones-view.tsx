@@ -118,6 +118,7 @@ export function MisReservacionesView({
               <ResumenReserva
                 key={reserva.reservacionId}
                 reserva={reserva}
+                permitirEdicion
                 destacada={reserva.reservacionId === destacada}
               />
             ))}

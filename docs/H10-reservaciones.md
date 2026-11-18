@@ -34,3 +34,8 @@ Prueba manual sugerida: seleccionar una mesa sin sesión, iniciar sesión, confi
 Los tests de componentes cubren errores, carga, doble envío, éxito, 401, 409 y fallos de transporte de Server Actions. Los tests de acciones verifican el token y que no se envíe el propietario.
 
 Alcance: confirmación y listado personal. No se agregan registro de cuentas, cancelación, modificación de reservas ni administración.
+
+## Recuperación de sesión y conflictos (FE-10.2)
+
+- Ante 401, el contacto se conserva en sessionStorage de la pestaña, asociado a la selección de mesa, fecha, hora y personas. Se restaura al volver del login, vence a los 30 minutos y se elimina al confirmar. No se incluye contacto en la URL. Si el navegador bloquea el almacenamiento, se informa antes de salir al login.
+- Ante 409, el enlace de regreso incluye buscar=1 y evita el prefetch. La pantalla de disponibilidad consulta al backend sin caché y entrega al formulario los resultados iniciales, incluidos vacío y error. No requiere pulsar Buscar otra vez; la entrada normal a /reservas conserva la búsqueda manual.

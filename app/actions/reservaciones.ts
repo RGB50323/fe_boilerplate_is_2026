@@ -2,6 +2,8 @@
 
 import {
   validarFiltros,
+  esMesa,
+  esHorarioSucursal,
   type ErroresDisponibilidad,
   type FiltrosDisponibilidad,
   type MesaDisponible,
@@ -13,17 +15,6 @@ export type DisponibilidadResultado = {
   error?: string;
   errores?: ErroresDisponibilidad;
 };
-
-function esMesa(valor: unknown): valor is MesaDisponible {
-  if (!valor || typeof valor !== "object") return false;
-  const mesa = valor as Record<string, unknown>;
-  return (
-    Number.isInteger(mesa.mesaId) &&
-    Number.isInteger(mesa.numero) &&
-    Number.isInteger(mesa.capacidad) &&
-    (mesa.zona === null || typeof mesa.zona === "string")
-  );
-}
 
 export type SucursalesResultado = {
   sucursales: Sucursal[];
@@ -38,19 +29,7 @@ function esSucursal(valor: unknown): valor is Sucursal {
     Number(sucursal.id) > 0 &&
     typeof sucursal.nombre === "string" &&
     Array.isArray(sucursal.horarios) &&
-    sucursal.horarios.every((valor: unknown) => {
-      if (!valor || typeof valor !== "object") return false;
-      const horario = valor as Record<string, unknown>;
-      const horaValida = (hora: unknown) =>
-        typeof hora === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hora);
-      return (
-        Number.isInteger(horario.diaSemana) &&
-        Number(horario.diaSemana) >= 0 &&
-        Number(horario.diaSemana) <= 6 &&
-        horaValida(horario.apertura) &&
-        horaValida(horario.cierre)
-      );
-    })
+    sucursal.horarios.every(esHorarioSucursal)
   );
 }
 
