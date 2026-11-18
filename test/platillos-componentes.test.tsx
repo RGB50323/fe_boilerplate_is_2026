@@ -23,7 +23,10 @@ const m = vi.hoisted(() => ({
   listarPlatillos: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => m.router }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => m.router,
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock("@/app/actions/platillos", () => ({
   crearPlatillo: m.crearPlatillo,
   editarPlatillo: m.editarPlatillo,
@@ -589,7 +592,9 @@ describe("PlatillosView", () => {
     await waitFor(() =>
       expect(m.listarPlatillos).toHaveBeenLastCalledWith(1, 1, ""),
     );
-    await waitFor(() => expect(screen.queryByText("Sin resultados")).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText("Sin resultados")).toBeNull(),
+    );
     expect(buscador.value).toBe("");
     expect(
       screen.queryByRole("button", { name: "Limpiar filtros" }),
@@ -625,7 +630,9 @@ describe("PlatillosView", () => {
     expect((await screen.findAllByText("Sopa de res")).length).toBeGreaterThan(
       0,
     );
-    expect(screen.getByRole("button", { name: "Página anterior" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Página anterior" }),
+    ).toBeEnabled();
   });
 
   it("si la página ya no existe salta a la última", async () => {

@@ -5,6 +5,7 @@ import { paginaVacia } from "@/lib/paginacion";
 import type { Platillo } from "@/lib/platillos";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 import { PlatillosView } from "./platillos-view";
+import { listarSucursales } from "@/app/actions/reservaciones";
 
 export const metadata: Metadata = {
   title: "Platillos | Los Burle",
@@ -23,7 +24,15 @@ export default async function PlatillosPage({
     redirect("/menu");
   }
 
-  const resultado = await listarPlatillos(usuario.sucursalId);
+  const [resultado, resultadoSucursales] = await Promise.all([
+    listarPlatillos(usuario.sucursalId),
+    listarSucursales(),
+  ]);
+
+  const sucursalNombre =
+    resultadoSucursales.sucursales.find(
+      (sucursal) => sucursal.id === usuario.sucursalId,
+    )?.nombre ?? `Sucursal ${usuario.sucursalId}`;
   if (!resultado.ok && resultado.sinSesion) redirect("/login");
 
   return (
@@ -32,6 +41,7 @@ export default async function PlatillosPage({
       inicial={resultado.ok ? resultado.datos : paginaVacia<Platillo>()}
       errorInicial={resultado.ok ? undefined : resultado.error}
       guardado={guardado === "1"}
+      sucursalNombre={sucursalNombre}
     />
   );
 }

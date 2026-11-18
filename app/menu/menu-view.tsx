@@ -24,12 +24,11 @@ import {
   type FiltrosMenu,
   type MenuRespuesta,
 } from "@/lib/menu";
-import { SUCURSALES } from "@/lib/sucursales";
+import type { Sucursal } from "@/lib/menu";
 import { CarritoLlevar } from "@/components/menu/carrito-llevar";
 import { useCarritoLlevar } from "@/components/menu/use-carrito-llevar";
 import { cantidadDe } from "@/lib/carrito-llevar";
 import { AccionesHeader } from "@/components/menu/acciones-header";
-
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -37,9 +36,10 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-function sucursalDe(qs: string): number {
+function sucursalDe(qs: string, sucursales: Sucursal[]): number {
   const id = Number(new URLSearchParams(qs).get("sucursal"));
-  return SUCURSALES.some((s) => s.id === id) ? id : SUCURSALES[0].id;
+
+  return sucursales.some((s) => s.id === id) ? id : sucursales[0].id;
 }
 
 type Resultado = { clave: string; menu?: MenuRespuesta };
@@ -48,14 +48,16 @@ function Menu({
   autenticado,
   esGerente,
   esMesero,
+  sucursales,
 }: {
   autenticado: boolean;
   esGerente: boolean;
   esMesero: boolean;
+  sucursales: Sucursal[];
 }) {
   const router = useRouter();
   const qs = useSearchParams().toString();
-  const sucursalId = sucursalDe(qs);
+  const sucursalId = sucursalDe(qs, sucursales);
   const filtros = useMemo(
     () => filtrosDesdeParams(Object.fromEntries(new URLSearchParams(qs))),
     [qs],
@@ -99,7 +101,7 @@ function Menu({
   useEffect(() => {
     let activo = true;
     consultarMenu(
-      sucursalDe(qs),
+      sucursalId,
       filtrosDesdeParams(Object.fromEntries(new URLSearchParams(qs))),
     ).then((r) => {
       if (activo) setResultado({ clave: `${qs}#${reintento}`, menu: r.menu });
@@ -107,7 +109,7 @@ function Menu({
     return () => {
       activo = false;
     };
-  }, [qs, reintento]);
+  }, [qs, reintento, sucursalId]);
 
   useEffect(() => {
     let activo = true;
@@ -190,7 +192,7 @@ function Menu({
             labelClassName="sr-only text-sm text-zinc-400 sm:not-sr-only"
             value={sucursalId}
             onChange={cambiarSucursal}
-            opciones={SUCURSALES.map((s) => ({
+            opciones={sucursales.map((s) => ({
               value: s.id,
               label: s.nombre,
             }))}
@@ -382,10 +384,12 @@ export function MenuView({
   autenticado,
   esGerente = false,
   esMesero = false,
+  sucursales,
 }: {
   autenticado: boolean;
   esGerente?: boolean;
   esMesero?: boolean;
+  sucursales: Sucursal[];
 }) {
   return (
     <main
@@ -396,6 +400,7 @@ export function MenuView({
           autenticado={autenticado}
           esGerente={esGerente}
           esMesero={esMesero}
+          sucursales={sucursales}
         />
       </Suspense>
     </main>
