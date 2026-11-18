@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ROLES_COCINA,
+  ROLES_GERENTE,
   ROLES_MESERO,
   obtenerRoles,
   obtenerSucursalId,
@@ -35,6 +36,15 @@ describe("roles del JWT", () => {
     expect(tieneRolPermitido(jwt({ rol: "CLIENTE" }), ROLES_COCINA)).toBe(
       false,
     );
+  });
+
+  it("solo permite GERENTE en /admin/inventario", () => {
+    expect(rolesRequeridosPara("/admin/inventario")).toEqual(ROLES_GERENTE);
+    expect(rolesRequeridosPara("/admin/platillos")).toBeNull();
+    expect(tieneRolPermitido(jwt({ rol: "GERENTE" }), ROLES_GERENTE)).toBe(true);
+    for (const rol of ["GERENTE_GENERAL", "COCINA", "MESERO", "CLIENTE"]) {
+      expect(tieneRolPermitido(jwt({ rol }), ROLES_GERENTE)).toBe(false);
+    }
   });
 
   it("solo permite MESERO en /mesero/entregas", () => {
