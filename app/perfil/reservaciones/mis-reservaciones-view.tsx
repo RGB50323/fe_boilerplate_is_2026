@@ -11,7 +11,11 @@ type Resultado = {
   clave: string;
   respuesta: Awaited<ReturnType<typeof listarMisReservaciones>>;
 };
-export function MisReservacionesView() {
+export function MisReservacionesView({
+  destacada,
+}: {
+  destacada?: string;
+} = {}) {
   const [pagina, setPagina] = useState(1);
   const [intento, setIntento] = useState(0);
   const [resultado, setResultado] = useState<Resultado | null>(null);
@@ -93,7 +97,11 @@ export function MisReservacionesView() {
           </p>
           <div className="grid gap-5 sm:grid-cols-2">
             {respuesta.datos.datos.map((reserva) => (
-              <ResumenReserva key={reserva.reservacionId} reserva={reserva} />
+              <ResumenReserva
+                key={reserva.reservacionId}
+                reserva={reserva}
+                destacada={reserva.reservacionId === destacada}
+              />
             ))}
           </div>
           <Paginacion

@@ -90,3 +90,20 @@ it("cambia de página usando el componente de paginación común", async () => {
   expect(await screen.findByText("R-000046")).toBeVisible();
   expect(listarMisReservaciones).toHaveBeenLastCalledWith(2);
 });
+
+it("resalta la reservación que llega desde una notificación", async () => {
+  vi.mocked(listarMisReservaciones).mockResolvedValue({
+    datos: {
+      datos: [reserva, { ...reserva, reservacionId: "R-000046" }],
+      pagina: 1,
+      total: 2,
+      totalPaginas: 1,
+    },
+  });
+  render(<MisReservacionesView destacada="R-000046" />);
+  const destacada = (await screen.findByText("R-000046")).closest("article");
+  expect(destacada).toHaveAttribute("aria-current", "true");
+  expect(screen.getByText("R-000045").closest("article")).not.toHaveAttribute(
+    "aria-current",
+  );
+});
