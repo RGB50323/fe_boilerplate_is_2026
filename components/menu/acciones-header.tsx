@@ -32,6 +32,7 @@ export function enlacesDelHeader({
     });
   }
   if (esMesero) {
+    enlaces.push({ href: "/mesero/entregas", texto: "Por entregar" });
     enlaces.push({
       href: "/mesero/pedidos",
       texto: "Registrar pedido",
