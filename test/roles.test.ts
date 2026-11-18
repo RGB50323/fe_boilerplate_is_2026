@@ -36,6 +36,15 @@ describe("roles del JWT", () => {
       false,
     );
   });
+
+  it("solo permite MESERO en /mesero/entregas", () => {
+    expect(rolesRequeridosPara("/mesero/entregas")).toEqual(ROLES_MESERO);
+    expect(rolesRequeridosPara("/mesero/pedidos")).toBeNull();
+    expect(tieneRolPermitido(jwt({ rol: "MESERO" }), ROLES_MESERO)).toBe(true);
+    for (const rol of ["COCINA", "GERENTE", "CLIENTE"]) {
+      expect(tieneRolPermitido(jwt({ rol }), ROLES_MESERO)).toBe(false);
+    }
+  });
 });
 
 describe("tokenVencido", () => {
@@ -49,14 +58,5 @@ describe("tokenVencido", () => {
   it("trata un token malformado o sin exp como vencido", () => {
     expect(tokenVencido("basura")).toBe(true);
     expect(tokenVencido(`x.${btoa(JSON.stringify({}))}.y`)).toBe(true);
-  });
-
-  it("solo permite MESERO en /mesero/entregas", () => {
-    expect(rolesRequeridosPara("/mesero/entregas")).toEqual(ROLES_MESERO);
-    expect(rolesRequeridosPara("/mesero/pedidos")).toBeNull();
-    expect(tieneRolPermitido(jwt({ rol: "MESERO" }), ROLES_MESERO)).toBe(true);
-    for (const rol of ["COCINA", "GERENTE", "CLIENTE"]) {
-      expect(tieneRolPermitido(jwt({ rol }), ROLES_MESERO)).toBe(false);
-    }
   });
 });
