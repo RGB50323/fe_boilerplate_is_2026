@@ -3,6 +3,10 @@
 import { llamar } from "@/lib/api";
 import {
   MAX_COMENTARIO,
+  SIN_PERMISO_SECCION,
+  errorRango,
+  esReporteCalificaciones,
+  type ReporteCalificaciones,
   esPlatilloPendiente,
   esResenasPlatillo,
   type PlatilloPendienteResena,
@@ -126,4 +130,47 @@ export async function publicarResena(datos: {
     ok: true,
     mensaje: resultado.datos.mensaje ?? "Reseña publicada correctamente",
   };
+}
+
+export type ReporteResultado =
+  { reporte: ReporteCalificaciones } | { sinSesion: true } | { error: string };
+
+export async function consultarReporteCalificaciones(
+  desde: string,
+  hasta: string,
+): Promise<ReporteResultado> {
+  const fecha = /^\d{4}-\d{2}-\d{2}$/;
+  if ((desde && !fecha.test(desde)) || (hasta && !fecha.test(hasta))) {
+    return { error: "Ingresa fechas válidas." };
+  }
+  const rango = errorRango(desde, hasta);
+  if (rango) return { error: rango };
+
+  const query = new URLSearchParams();
+  if (desde) query.set("desde", desde);
+  if (hasta) query.set("hasta", hasta);
+  const resultado = await llamar<unknown>(
+    `resenas/reporte${query.size ? `?${query}` : ""}`,
+    {
+      mensajes: {
+        400: "Revisa las fechas del filtro.",
+        403: SIN_PERMISO_SECCION,
+      },
+    },
+  );
+  if (!resultado.ok) {
+    if (resultado.sinSesion) return { sinSesion: true };
+    // llamar responde 403 con un texto genérico
+    return {
+      error:
+        resultado.error === "No tienes permiso para realizar esta acción."
+          ? SIN_PERMISO_SECCION
+          : resultado.error,
+    };
+  }
+  if (!esReporteCalificaciones(resultado.datos)) {
+    console.error("Respuesta del reporte de calificaciones inválida.");
+    return { error: "No pudimos cargar el reporte. Intenta de nuevo." };
+  }
+  return { reporte: resultado.datos };
 }

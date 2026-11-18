@@ -97,3 +97,36 @@ export function formatoLimite(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : fechaHora.format(d);
 }
+
+export const RANGO_INVALIDO =
+  "La fecha final no puede ser anterior a la inicial.";
+export const SIN_RESENAS_PERIODO = "Sin reseñas en el periodo seleccionado";
+export const SIN_PERMISO_SECCION = "No tienes permiso para ver esta sección";
+
+// H23: reporte de calificaciones de la sucursal del gerente
+export type ReporteCalificaciones = {
+  sucursal: string;
+  promedio: number | null;
+  total: number;
+  distribucion: Distribucion;
+  desde: string | null;
+  hasta: string | null;
+};
+
+export function esReporteCalificaciones(
+  valor: unknown,
+): valor is ReporteCalificaciones {
+  if (!valor || typeof valor !== "object") return false;
+  const r = valor as Record<string, unknown>;
+  return (
+    typeof r.sucursal === "string" &&
+    (r.promedio === null || typeof r.promedio === "number") &&
+    Number.isInteger(r.total) &&
+    esDistribucion(r.distribucion)
+  );
+}
+
+// Valida el rango antes de pedir el reporte; null si está bien
+export function errorRango(desde: string, hasta: string): string | null {
+  return desde && hasta && hasta < desde ? RANGO_INVALIDO : null;
+}
