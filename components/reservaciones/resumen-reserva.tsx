@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { puedeModificarReserva, rutaEdicion } from "@/lib/edicion-reserva";
 import { Badge } from "@/components/ui/badge";
 import { formatoFecha, formatoHora } from "@/lib/reservaciones";
@@ -7,10 +10,17 @@ import type { Reservacion } from "@/lib/confirmacion-reserva";
 export function ResumenReserva({
   reserva,
   permitirEdicion = false,
+  destacada = false,
 }: {
   reserva: Reservacion;
   permitirEdicion?: boolean;
+  destacada?: boolean;
 }) {
+  const ref = useRef<HTMLElement>(null);
+  // Al llegar desde una notificación, la reservación queda a la vista
+  useEffect(() => {
+    if (destacada) ref.current?.scrollIntoView?.({ block: "center" });
+  }, [destacada]);
   const detalles = [
     ["Sucursal", reserva.sucursal],
     ["Mesa", String(reserva.mesa)],
@@ -19,7 +29,15 @@ export function ResumenReserva({
     ["Personas", String(reserva.personas)],
   ];
   return (
-    <article className="rounded-2xl border border-zinc-800 bg-[#18181b] p-6 sm:p-8">
+    <article
+      ref={ref}
+      aria-current={destacada ? "true" : undefined}
+      className={`rounded-2xl border bg-[#18181b] p-6 sm:p-8 ${
+        destacada
+          ? "border-[#FF7A1A] ring-2 ring-[#FF7A1A]/40"
+          : "border-zinc-800"
+      }`}
+    >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold tabular-nums sm:text-2xl">
           {reserva.reservacionId}

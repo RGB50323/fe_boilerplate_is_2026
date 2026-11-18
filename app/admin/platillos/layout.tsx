@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Fraunces } from "next/font/google";
 import type { ReactNode } from "react";
 

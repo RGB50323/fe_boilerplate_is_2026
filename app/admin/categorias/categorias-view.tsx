@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Fraunces } from "next/font/google";
 import { useRouter } from "next/navigation";
 import {

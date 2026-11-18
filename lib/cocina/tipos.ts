@@ -6,6 +6,14 @@ export type ItemPedidoCocina = {
   cantidad: number;
   nota: string | null;
   estado: EstadoItemCocina;
+  listoEn?: string | null;
+};
+
+export type ItemListo = {
+  itemId: number;
+  pedidoId?: number;
+  listoEn?: string | null;
+  pedidoEstado?: string;
 };
 
 export type PedidoCocina = {

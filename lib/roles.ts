@@ -1,7 +1,10 @@
 export const ROLES_COCINA = ["COCINA", "GERENTE", "GERENTE_GENERAL"] as const;
 
+export const ROLES_MESERO = ["MESERO"] as const;
+
 export const ROLES_POR_RUTA: Record<string, readonly string[]> = {
   "/cocina": ROLES_COCINA,
+  "/mesero/entregas": ROLES_MESERO,
 };
 
 type Payload = Record<string, unknown>;
@@ -55,9 +58,16 @@ export function tieneRolPermitido(
   return obtenerRoles(token).some((rol) => permitidos.includes(rol));
 }
 
-export function rolesRequeridosPara(pathname: string): readonly string[] | null {
+export function rolesRequeridosPara(
+  pathname: string,
+): readonly string[] | null {
   const ruta = Object.keys(ROLES_POR_RUTA).find(
     (base) => pathname === base || pathname.startsWith(`${base}/`),
   );
   return ruta ? ROLES_POR_RUTA[ruta] : null;
+}
+
+export function tokenVencido(token: string): boolean {
+  const exp = leerPayload(token)?.exp;
+  return typeof exp !== "number" || exp * 1000 <= Date.now();
 }

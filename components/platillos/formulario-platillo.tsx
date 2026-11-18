@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { SelectorImagen } from "@/components/platillos/selector-imagen";
@@ -17,7 +17,12 @@ import {
   type ValoresPlatillo,
 } from "@/lib/platillos";
 import { VistaPreviaPlatillo } from "./vista-previa-platillo";
-import { crearPlatillo, editarPlatillo, subirImagenPlatillo } from "@/app/actions/platillos";
+import {
+  crearPlatillo,
+  editarPlatillo,
+  subirImagenPlatillo,
+} from "@/app/actions/platillos";
+import { rutaConSucursal } from "@/lib/navegacion-sucursal";
 
 type Props = {
   sucursalId: number;
@@ -91,7 +96,9 @@ export function FormularioPlatillo({
       : await crearPlatillo(sucursalId, valores);
 
     if (resultado.ok) {
-      router.push("/admin/platillos?guardado=1");
+      router.push(
+        rutaConSucursal("/admin/platillos?guardado=1", window.location.search),
+      );
       return;
     }
     setGuardando(false);

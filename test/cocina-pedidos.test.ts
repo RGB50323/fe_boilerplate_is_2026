@@ -5,6 +5,10 @@ import {
   esPedidoCocina,
   estaRetrasado,
   formatearHora,
+  horaListo,
+  leerItemListo,
+  leerPedidoListo,
+  marcarItemListo,
   minutosDeEspera,
   prepararLista,
   quitarPedido,
@@ -183,5 +187,104 @@ describe("URL del socket", () => {
     expect(
       urlSocketCocina({ API_URL: "http://api/api/v1", SOCKET_URL: "https://ws.example.com/" }),
     ).toBe("https://ws.example.com/cocina");
+  });
+});
+
+describe("platillo listo (H07)", () => {
+  const conDosItems = () =>
+    prepararLista(
+      [
+        crearPedido({
+          id: 1,
+          items: [
+            { id: 10, platillo: "Pupusa revuelta", cantidad: 2, nota: null, estado: "PENDIENTE" },
+            { id: 11, platillo: "Tamal de elote", cantidad: 1, nota: null, estado: "PENDIENTE" },
+          ],
+        }),
+        crearPedido({ id: 2 }),
+      ],
+      T0,
+    );
+
+  it("marca el ítem como LISTO con su hora y deja el pedido en el tablero", () => {
+    const lista = marcarItemListo(conDosItems(), {
+      itemId: 10,
+      pedidoId: 1,
+      listoEn: "2026-11-06T15:18:00.000Z",
+      pedidoEstado: "EN_PREPARACION",
+    });
+    expect(ids(lista)).toEqual([1, 2]);
+    expect(lista[0].items[0]).toMatchObject({ estado: "LISTO", listoEn: "2026-11-06T15:18:00.000Z" });
+    expect(lista[0].items[1].estado).toBe("PENDIENTE");
+  });
+
+  it("encuentra el pedido por el ítem si no llega pedidoId", () => {
+    const lista = marcarItemListo(conDosItems(), { itemId: 11 });
+    expect(lista[0].items[1]).toMatchObject({ estado: "LISTO", listoEn: null });
+  });
+
+  it("quita el pedido cuando pedidoEstado es LISTO o ya no quedan pendientes", () => {
+    expect(ids(marcarItemListo(conDosItems(), { itemId: 10, pedidoId: 1, pedidoEstado: "LISTO" }))).toEqual([2]);
+    expect(ids(marcarItemListo(conDosItems(), { itemId: 20, pedidoId: 2 }))).toEqual([1]);
+  });
+
+  it("es idempotente: repetir el mismo cambio no crea una lista nueva", () => {
+    const una = marcarItemListo(conDosItems(), { itemId: 10, pedidoId: 1, listoEn: "12:18" });
+    expect(marcarItemListo(una, { itemId: 10, pedidoId: 1, listoEn: "12:18" })).toBe(una);
+    expect(marcarItemListo(una, { itemId: 999 })).toBe(una);
+  });
+
+  it("completa la hora si el ítem ya estaba LISTO sin ella", () => {
+    const sinHora = marcarItemListo(conDosItems(), { itemId: 10 });
+    const conHora = marcarItemListo(sinHora, { itemId: 10, listoEn: "12:18" });
+    expect(conHora[0].items[0].listoEn).toBe("12:18");
+  });
+
+  it("conserva la hora de listo si un pedido:actualizado llega sin ella", () => {
+    const marcada = marcarItemListo(conDosItems(), { itemId: 10, listoEn: "12:18" });
+    const lista = reemplazarPedido(
+      marcada,
+      crearPedido({
+        id: 1,
+        items: [
+          { id: 10, platillo: "Pupusa revuelta", cantidad: 2, nota: null, estado: "LISTO" },
+          { id: 11, platillo: "Tamal de elote", cantidad: 1, nota: null, estado: "PENDIENTE" },
+        ],
+      }),
+      T0,
+    );
+    expect(lista[0].items[0].listoEn).toBe("12:18");
+  });
+
+  it("formatea listoEn tanto ISO como HH:MM", () => {
+    expect(horaListo("12:18")).toBe("12:18");
+    expect(horaListo("9:05")).toBe("09:05");
+    expect(horaListo(new Date(2026, 9, 30, 12, 18).toISOString())).toBe("12:18");
+    expect(horaListo(null)).toBeNull();
+    expect(horaListo("mañana")).toBeNull();
+  });
+
+  it("lee la respuesta del PATCH y los eventos del socket", () => {
+    expect(
+      leerItemListo({ itemId: 301, estado: "LISTO", listoEn: "12:18", pedidoId: 120, pedidoEstado: "LISTO" }),
+    ).toEqual({ itemId: 301, listoEn: "12:18", pedidoId: 120, pedidoEstado: "LISTO" });
+    expect(leerItemListo({ itemId: 5 })).toEqual({ itemId: 5 });
+    expect(leerItemListo(crearPedido({ id: 5 }))).toBeNull();
+    expect(leerItemListo({ itemId: 5, estado: "PENDIENTE" })).toBeNull();
+    expect(leerItemListo({ itemId: "5" })).toBeNull();
+    expect(leerItemListo(null)).toBeNull();
+
+    expect(leerPedidoListo({ pedidoId: 120 })).toBe(120);
+    expect(leerPedidoListo(crearPedido({ id: 7 }))).toBe(7);
+    expect(leerPedidoListo({})).toBeNull();
+  });
+
+  it("acepta listoEn en los ítems del GET", () => {
+    const pedido = crearPedido({
+      id: 1,
+      items: [{ id: 1, platillo: "Tamal", cantidad: 1, nota: null, estado: "LISTO", listoEn: "2026-11-06T15:18:00.000Z" }],
+    });
+    expect(esPedidoCocina(pedido)).toBe(true);
+    expect(esPedidoCocina({ ...pedido, items: [{ ...pedido.items[0], listoEn: 5 }] })).toBe(false);
   });
 });

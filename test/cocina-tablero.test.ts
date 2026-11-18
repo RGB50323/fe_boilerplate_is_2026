@@ -246,4 +246,115 @@ describe("tablero de cocina", () => {
     socket.emitir("pedido:nuevo", crearPedido({ id: 1 }));
     expect(tablero.obtenerEstado().pedidos).toHaveLength(0);
   });
+
+  describe("platillo listo (H07)", () => {
+    const conDosItems = () =>
+      crearPedido({
+        id: 1,
+        numero: "C-0001",
+        items: [
+          { id: 10, platillo: "Pupusa revuelta", cantidad: 2, nota: null, estado: "PENDIENTE" },
+          { id: 11, platillo: "Tamal de elote", cantidad: 1, nota: null, estado: "PENDIENTE" },
+        ],
+      });
+
+    it("item:listo con el pedido completo (carga del gateway) actualiza la tarjeta", async () => {
+      const { tablero, socket, avisos } = montar([[conDosItems()]]);
+      tablero.iniciar();
+      await conectar(socket);
+      tablero.marcarItemListo({ itemId: 10, pedidoId: 1, listoEn: "12:18" });
+
+      const enCocina = conDosItems();
+      enCocina.items = enCocina.items.map((item) => ({ ...item, estado: "LISTO" as const }));
+      enCocina.items[1].estado = "PENDIENTE";
+      socket.emitir("item:listo", enCocina);
+
+      const [pedido] = tablero.obtenerEstado().pedidos;
+      expect(pedido.items[0]).toMatchObject({ estado: "LISTO", listoEn: "12:18" });
+      expect(pedido.items[1].estado).toBe("PENDIENTE");
+      expect(avisos).toHaveLength(0);
+
+      enCocina.items[1].estado = "LISTO";
+      socket.emitir("item:listo", enCocina);
+      socket.emitir("pedido:listo", enCocina);
+      socket.emitir("pedido:retirado", { id: 1 });
+      expect(tablero.obtenerEstado().pedidos).toHaveLength(0);
+      expect(avisos.map((a) => [a.tipo, a.pedido.id])).toEqual([["listo", 1]]);
+      tablero.detener();
+    });
+
+    it.each(["item.listo", "item:listo"])("%s con { itemId } marca el ítem sin quitar el pedido", async (evento) => {
+      const { tablero, socket, avisos } = montar([[conDosItems()]]);
+      tablero.iniciar();
+      await conectar(socket);
+
+      socket.emitir(evento, { itemId: 10, pedidoId: 1, estado: "LISTO", listoEn: "12:18", pedidoEstado: "EN_PREPARACION" });
+      const [pedido] = tablero.obtenerEstado().pedidos;
+      expect(pedido.items[0]).toMatchObject({ estado: "LISTO", listoEn: "12:18" });
+      expect(avisos).toHaveLength(0);
+      tablero.detener();
+    });
+
+    it("quita el pedido y avisa una sola vez aunque lleguen la respuesta y los eventos", async () => {
+      const { tablero, socket, avisos } = montar([[conDosItems(), crearPedido({ id: 2 })]]);
+      tablero.iniciar();
+      await conectar(socket);
+
+      tablero.marcarItemListo({ itemId: 10, pedidoId: 1, pedidoEstado: "LISTO" });
+      socket.emitir("item.listo", { itemId: 10, pedidoId: 1, pedidoEstado: "LISTO" });
+      socket.emitir("pedido.listo", { pedidoId: 1 });
+      socket.emitir("pedido:listo", { pedidoId: 1 });
+
+      expect(ids(tablero.obtenerEstado().pedidos)).toEqual([2]);
+      expect(avisos.map((a) => [a.tipo, a.pedido.id])).toEqual([["listo", 1]]);
+      tablero.detener();
+    });
+
+    it("pedido.listo quita la tarjeta aunque no haya llegado item.listo", async () => {
+      const { tablero, socket, avisos } = montar([[conDosItems()]]);
+      tablero.iniciar();
+      await conectar(socket);
+
+      socket.emitir("pedido.listo", { id: 1 });
+      expect(tablero.obtenerEstado().pedidos).toHaveLength(0);
+      expect(avisos.map((a) => a.tipo)).toEqual(["listo"]);
+      tablero.detener();
+    });
+
+    it("ignora cargas inválidas", async () => {
+      const { tablero, socket } = montar([[conDosItems()]]);
+      tablero.iniciar();
+      await conectar(socket);
+      const antes = tablero.obtenerEstado().pedidos;
+
+      socket.emitir("item.listo", { itemId: "10" });
+      socket.emitir("pedido.listo", null);
+      expect(tablero.obtenerEstado().pedidos).toBe(antes);
+      tablero.detener();
+    });
+
+    it("no pierde un ítem marcado mientras se resincroniza", async () => {
+      const { tablero, socket } = montar([[conDosItems()]]);
+      tablero.iniciar();
+      socket.emitir("connect");
+      tablero.marcarItemListo({ itemId: 10, pedidoId: 1, listoEn: "12:18" });
+      await vaciar();
+      expect(tablero.obtenerEstado().pedidos[0].items[0]).toMatchObject({ estado: "LISTO", listoEn: "12:18" });
+      tablero.detener();
+    });
+
+    it("refrescar vuelve a pedir GET sin mostrar cargando", async () => {
+      const { tablero, socket, obtenerPedidos } = montar([[conDosItems()], []]);
+      tablero.iniciar();
+      await conectar(socket);
+      const llamadas = obtenerPedidos.mock.calls.length;
+
+      tablero.refrescar();
+      expect(tablero.obtenerEstado().carga).toBe("listo");
+      await vaciar();
+      expect(obtenerPedidos).toHaveBeenCalledTimes(llamadas + 1);
+      expect(tablero.obtenerEstado().pedidos).toHaveLength(0);
+      tablero.detener();
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MenuView } from "@/app/menu/menu-view";
+import { SUCURSALES } from "@/lib/sucursales";
 
 const mocks = vi.hoisted(() => ({
   router: { replace: vi.fn(), push: vi.fn() },
@@ -16,7 +17,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/font/google", () => ({
   Fraunces: () => ({ className: "font-test" }),
 }));
-vi.mock("@/app/actions/menu", () => ({ consultarMenu: mocks.consultarMenu }));
+vi.mock("@/app/actions/menu", () => ({
+  consultarMenu: mocks.consultarMenu,
+}));
 vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout }));
 vi.mock("@/components/notificaciones/campana-notificaciones", () => ({
   CampanaNotificaciones: () => null,
@@ -67,13 +70,13 @@ describe("pantalla del menú", () => {
 
   it("muestra el estado de carga mientras espera al backend", () => {
     mocks.consultarMenu.mockReturnValue(new Promise(() => {}));
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     expect(screen.getByText("Cargando menú...")).toBeInTheDocument();
   });
 
   it("muestra los platillos agrupados por categoría con nombre, descripción y precio", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
 
     expect(
       await screen.findByRole("heading", { name: "Bebidas" }),
@@ -91,7 +94,7 @@ describe("pantalla del menú", () => {
     mocks.consultarMenu.mockResolvedValue({
       menu: { sucursalId: 1, categorias: [] },
     });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     expect(
       await screen.findByText("No hay platillos que coincidan con tu búsqueda"),
     ).toBeInTheDocument();
@@ -101,7 +104,7 @@ describe("pantalla del menú", () => {
     mocks.consultarMenu.mockResolvedValue({
       error: "No pudimos cargar el menú",
     });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     expect(
       await screen.findByText("No pudimos cargar el menú"),
     ).toBeInTheDocument();
@@ -114,7 +117,7 @@ describe("pantalla del menú", () => {
 
   it("muestra el error bajo el campo si el precio mínimo es mayor que el máximo", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     fireEvent.change(screen.getByLabelText("Precio mín."), {
@@ -138,7 +141,7 @@ describe("pantalla del menú", () => {
   it("consulta con los filtros de la URL y los muestra como etiquetas", async () => {
     mocks.params.current = new URLSearchParams("sucursal=1&q=pupu&precioMax=5");
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     expect(mocks.consultarMenu).toHaveBeenCalledWith(1, {
@@ -159,7 +162,7 @@ describe("pantalla del menú", () => {
 
   it("al escribir en la búsqueda actualiza la URL", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     fireEvent.change(screen.getByLabelText("Buscar por nombre de platillo"), {
@@ -179,7 +182,7 @@ describe("pantalla del menú", () => {
   it("al quitar una etiqueta se elimina ese filtro de la URL", async () => {
     mocks.params.current = new URLSearchParams("sucursal=1&q=pupu");
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     fireEvent.click(
@@ -192,9 +195,10 @@ describe("pantalla del menú", () => {
       }),
     );
   });
+
   it("sin sesión muestra Iniciar sesión", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado={false} />);
+    render(<MenuView autenticado={false} sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     expect(
@@ -207,7 +211,7 @@ describe("pantalla del menú", () => {
 
   it("con sesión muestra Cerrar sesión desde el primer render", () => {
     mocks.consultarMenu.mockReturnValue(new Promise(() => {}));
-    render(<MenuView autenticado />);
+    render(<MenuView autenticado sucursales={SUCURSALES} />);
 
     expect(
       screen.getByRole("button", { name: "Cerrar sesión" }),
@@ -220,7 +224,7 @@ describe("pantalla del menú", () => {
   it("al cerrar sesión llama a logout", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     mocks.logout.mockResolvedValue(undefined);
-    render(<MenuView autenticado />);
+    render(<MenuView autenticado sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
@@ -230,18 +234,17 @@ describe("pantalla del menú", () => {
 
   it("muestra el acceso a Gestionar platillos al gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado esGerente />);
+    render(<MenuView autenticado esGerente sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
-    expect(screen.getByRole("link", { name: "Gestionar platillos" })).toHaveAttribute(
-      "href",
-      "/admin/platillos",
-    );
+    expect(
+      screen.getByRole("link", { name: "Gestionar platillos" }),
+    ).toHaveAttribute("href", "/admin/platillos");
   });
 
   it("no muestra el acceso a Gestionar platillos si no es gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
-    render(<MenuView autenticado />);
+    render(<MenuView autenticado sucursales={SUCURSALES} />);
     await screen.findByText("Horchata");
 
     expect(

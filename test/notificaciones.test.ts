@@ -28,7 +28,28 @@ describe("helpers de notificaciones", () => {
     expect(rutaDeReferencia({ tipo: "PEDIDO_ENTREGA", id: "A/B" })).toBe(
       "/pedidos/A%2FB",
     );
-    expect(rutaDeReferencia({ tipo: "RESERVACION", id: 5 })).toBe("/reservas");
+    expect(rutaDeReferencia({ tipo: "RESERVACION", id: 5 })).toBe(
+      "/perfil/reservaciones",
+    );
+  });
+
+  it("los avisos de H26 llevan a la reservación en Mis reservaciones", () => {
+    expect(
+      rutaDeReferencia({ tipo: "RESERVA_CONFIRMADA", id: "R-000012" }),
+    ).toBe("/perfil/reservaciones?reservacion=R-000012");
+    // Modificación y recordatorio traen una marca después de ":"
+    expect(
+      rutaDeReferencia({
+        tipo: "RESERVA_MODIFICADA",
+        id: "R-000012:1794787975843",
+      }),
+    ).toBe("/perfil/reservaciones?reservacion=R-000012");
+    expect(
+      rutaDeReferencia({
+        tipo: "RESERVA_RECORDATORIO",
+        id: "R-000012:1794788000000",
+      }),
+    ).toBe("/perfil/reservaciones?reservacion=R-000012");
   });
 
   it("no crea rutas para referencias desconocidas", () => {
