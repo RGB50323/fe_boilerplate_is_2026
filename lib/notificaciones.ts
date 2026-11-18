@@ -67,6 +67,12 @@ export function rutaDeReferencia(
   // Rutas aún no creadas
   if (tipo.startsWith("PEDIDO"))
     return `/pedidos/${encodeURIComponent(String(referencia.id))}`;
-  if (tipo.startsWith("RESERVA")) return "/reservas";
+  if (tipo.startsWith("RESERVA")) {
+    // H26 manda "R-000012" o "R-000012:<marca>"; se resalta en Mis reservaciones
+    const codigo = String(referencia.id).split(":")[0];
+    return /^R-\d+$/.test(codigo)
+      ? `/perfil/reservaciones?reservacion=${codigo}`
+      : "/perfil/reservaciones";
+  }
   return null;
 }

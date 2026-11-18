@@ -26,7 +26,7 @@ const aviso = {
   titulo: "Reservación confirmada",
   mensaje: "Tu mesa estará lista a las 7:00 p. m.",
   moduloOrigen: "RESERVACIONES",
-  referencia: { tipo: "RESERVA", id: 8 },
+  referencia: { tipo: "RESERVA_CONFIRMADA", id: "R-000008" },
   leida: false,
   creadaEn: "2026-11-07T15:30:00.000Z",
 };
@@ -146,7 +146,9 @@ describe("campana de notificaciones", () => {
 
     expect(marcar).toHaveBeenCalledWith(1);
     expect(screen.queryByText("1")).not.toBeInTheDocument();
-    expect(navegar).toHaveBeenCalledWith("/reservas");
+    expect(navegar).toHaveBeenCalledWith(
+      "/perfil/reservaciones?reservacion=R-000008",
+    );
   });
 
   it("anexa la segunda página con Ver más", async () => {
