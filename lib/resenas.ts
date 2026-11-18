@@ -58,3 +58,42 @@ export function esResenasPlatillo(valor: unknown): valor is ResenasPlatillo {
     Array.isArray(r.resenas)
   );
 }
+
+export const MAX_COMENTARIO = 500;
+
+// Platillo de un pedido pagado que el cliente todavía puede calificar
+export type PlatilloPendienteResena = {
+  pedidoId: number;
+  numero: string | null;
+  sucursal: string;
+  platilloId: number;
+  nombre: string;
+  disponibleHasta: string;
+};
+
+export function esPlatilloPendiente(
+  valor: unknown,
+): valor is PlatilloPendienteResena {
+  if (!valor || typeof valor !== "object") return false;
+  const p = valor as Record<string, unknown>;
+  return (
+    Number.isInteger(p.pedidoId) &&
+    Number.isInteger(p.platilloId) &&
+    typeof p.nombre === "string" &&
+    typeof p.sucursal === "string" &&
+    typeof p.disponibleHasta === "string" &&
+    (p.numero === null || typeof p.numero === "string")
+  );
+}
+
+const fechaHora = new Intl.DateTimeFormat("es-SV", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "America/El_Salvador",
+});
+
+// Fecha límite para calificar en hora de El Salvador
+export function formatoLimite(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : fechaHora.format(d);
+}
