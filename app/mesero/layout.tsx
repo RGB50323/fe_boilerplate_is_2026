@@ -19,12 +19,26 @@ export default function MeseroLayout({ children }: { children: ReactNode }) {
             <p className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
             <p className="text-lg text-zinc-400 sm:text-2xl">Panel de mesero</p>
           </div>
-          <Link
-            href="/menu"
-            className="text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
-          >
-            Ver menú
-          </Link>
+          <nav aria-label="Panel de mesero" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link
+              href="/mesero/pedidos"
+              className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Registrar pedido
+            </Link>
+            <Link
+              href="/mesero/entregas"
+              className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Por entregar
+            </Link>
+            <Link
+              href="/menu"
+              className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Ver menú
+            </Link>
+          </nav>
         </header>
         {children}
       </div>
