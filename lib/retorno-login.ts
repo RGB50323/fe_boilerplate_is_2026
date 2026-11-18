@@ -21,3 +21,11 @@ export function retornoLogin(valor: unknown): string {
     return "/menu";
   }
 }
+
+// Retorno al login, conservando la reservación a resaltar
+export function rutaRetorno(destacada?: string): string {
+  const ruta = destacada
+    ? `/perfil/reservaciones?reservacion=${destacada}`
+    : "/perfil/reservaciones";
+  return encodeURIComponent(ruta);
+}

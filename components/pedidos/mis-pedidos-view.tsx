@@ -6,6 +6,7 @@ import { listarMisPedidos } from "@/app/actions/pedidos";
 import { Button } from "@/components/ui/button";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Paginacion } from "@/components/ui/paginacion";
+import { PendientesResena } from "@/components/resenas/pendientes-resena";
 import { formatoPrecio } from "@/lib/menu";
 import { etiquetaEstado } from "@/lib/seguimiento";
 
@@ -63,6 +64,7 @@ export function MisPedidosView() {
 
   return (
     <section aria-label="Mis pedidos" aria-busy={cargando}>
+      <PendientesResena />
       {cargando ? (
         <PageLoading mensaje="Cargando tus pedidos…" />
       ) : respuesta && !respuesta.ok ? (
