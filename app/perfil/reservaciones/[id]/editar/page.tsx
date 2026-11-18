@@ -1,3 +1,4 @@
+import { loginEdicion } from "@/lib/edicion-reserva";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -15,10 +16,7 @@ export default async function EditarReservaPage({
 }) {
   const { id } = await params;
   const resultado = await obtenerReservacion(id);
-  if (resultado.sinSesion)
-    redirect(
-      "/login?next=" + encodeURIComponent(`/perfil/reservaciones/${id}/editar`),
-    );
+  if (resultado.sinSesion) redirect(loginEdicion(id));
   return (
     <MarcoReservas
       titulo="Modificar reservación"
@@ -28,6 +26,7 @@ export default async function EditarReservaPage({
         <EditarReservaForm
           key={resultado.reserva.version}
           reserva={resultado.reserva}
+          ahoraInicial={new Date().toISOString()}
         />
       ) : (
         <div role="alert">

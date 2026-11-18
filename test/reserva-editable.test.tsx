@@ -39,7 +39,12 @@ it("permite editar reservas confirmadas futuras", () => {
   ).toBeVisible();
 });
 it("bloquea también el acceso directo al formulario de una reserva pasada", () => {
-  render(<EditarReservaForm reserva={reserva} />);
+  render(
+    <EditarReservaForm
+      ahoraInicial={new Date().toISOString()}
+      reserva={reserva}
+    />,
+  );
   expect(screen.getByRole("alert")).toHaveTextContent(
     "todavía no haya comenzado",
   );

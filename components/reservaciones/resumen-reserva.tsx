@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { puedeModificarReserva } from "@/lib/edicion-reserva";
+import { puedeModificarReserva, rutaEdicion } from "@/lib/edicion-reserva";
 import { Badge } from "@/components/ui/badge";
 import { formatoFecha, formatoHora } from "@/lib/reservaciones";
 import type { Reservacion } from "@/lib/confirmacion-reserva";
@@ -45,7 +45,7 @@ export function ResumenReserva({
       </p>
       {permitirEdicion && puedeModificarReserva(reserva) && (
         <Link
-          href={`/perfil/reservaciones/${reserva.reservacionId}/editar`}
+          href={rutaEdicion(reserva.reservacionId)}
           className="mt-5 inline-block rounded-full bg-[#FF7A1A] px-5 py-3 font-semibold text-[#101012] hover:bg-orange-400"
         >
           Modificar reservación

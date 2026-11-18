@@ -69,7 +69,11 @@ export async function llamar<T>(
             ? await response.json().catch(() => null)
             : null;
         const errores: Record<string, string> = {};
-        if (detalle?.errores && typeof detalle.errores === "object") {
+        if (
+          response.status === 400 &&
+          detalle?.errores &&
+          typeof detalle.errores === "object"
+        ) {
           for (const [campo, mensaje] of Object.entries(detalle.errores)) {
             if (typeof mensaje === "string" && mensaje.trim())
               errores[campo] = mensaje;

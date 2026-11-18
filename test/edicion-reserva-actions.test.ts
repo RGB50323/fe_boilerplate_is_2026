@@ -1,7 +1,9 @@
+import { llamar } from "@/lib/api";
 import { beforeEach, expect, it, vi } from "vitest";
 import {
   obtenerReservacion,
   modificarReservacion,
+  consultarMesasAlternativas,
 } from "@/app/actions/edicion-reserva";
 import { getSession } from "@/lib/session";
 import { retornoLogin } from "@/lib/retorno-login";
@@ -122,4 +124,53 @@ it("rechaza horarios y mesas con datos inválidos de la API", async () => {
   const resultado = await modificarReservacion(reserva.reservacionId, campos);
   expect(resultado).toHaveProperty("error");
   expect(resultado.alternativas).toBeUndefined();
+  expect(resultado.error).toContain("La mesa ya no está disponible");
+  expect(resultado.recargar).toBe(true);
+});
+
+it.each([
+  null,
+  undefined,
+  [],
+  2,
+  { ...campos, personas: 2 },
+  { ...campos, fecha: null },
+  { ...campos, hora: 14 },
+])(
+  "rechaza una entrada mal formada sin lanzar errores ni llamar la API: %j",
+  async (datos) => {
+    await expect(
+      modificarReservacion(reserva.reservacionId, datos),
+    ).resolves.toHaveProperty("error");
+    await expect(
+      consultarMesasAlternativas(reserva.reservacionId, datos),
+    ).resolves.toHaveProperty("error");
+    expect(fetchMock).not.toHaveBeenCalled();
+  },
+);
+it("los 409 exponen el código pero no errores por campo de H10", async () => {
+  fetchMock.mockResolvedValueOnce(
+    Response.json(
+      { codigo: "MESA_NO_DISPONIBLE", errores: { personas: "No corresponde" } },
+      { status: 409 },
+    ),
+  );
+  const resultado = await llamar("reservaciones", { detallarErrores: true });
+  expect(resultado).toMatchObject({
+    ok: false,
+    codigo: "MESA_NO_DISPONIBLE",
+    errores: {},
+  });
+});
+it("consulta mesas para una cantidad mayor sin enviar un PATCH", async () => {
+  fetchMock.mockResolvedValueOnce(
+    Response.json([{ mesaId: 7, numero: 7, capacidad: 6, zona: null }]),
+  );
+  const resultado = await consultarMesasAlternativas(reserva.reservacionId, {
+    ...campos,
+    personas: "6",
+  });
+  expect(resultado.alternativas).toHaveLength(1);
+  expect(String(fetchMock.mock.calls[0][0])).toContain("personas=6");
+  expect(fetchMock.mock.calls[0][1].method).toBe("GET");
 });

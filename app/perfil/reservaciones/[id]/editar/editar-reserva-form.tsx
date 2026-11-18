@@ -1,10 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { modificarReservacion } from "@/app/actions/edicion-reserva";
+import {
+  modificarReservacion,
+  consultarMesasAlternativas,
+} from "@/app/actions/edicion-reserva";
 import {
   puedeModificarReserva,
+  rutaEdicion,
+  loginEdicion,
   type DetalleReserva,
   type ResultadoEdicion,
 } from "@/lib/edicion-reserva";
@@ -21,7 +26,20 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ResumenReserva } from "@/components/reservaciones/resumen-reserva";
 
-export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
+export function EditarReservaForm({
+  reserva,
+  ahoraInicial,
+}: {
+  reserva: DetalleReserva;
+  ahoraInicial: string;
+}) {
+  // El primer render comparte el instante del servidor; el reloj avanza después de hidratar.
+  const [ahora, setAhora] = useState(() => new Date(ahoraInicial));
+  useEffect(() => {
+    const reloj = setInterval(() => setAhora(new Date()), 1000);
+    return () => clearInterval(reloj);
+  }, []);
+
   const [fecha, setFecha] = useState(reserva.fecha);
   const [hora, setHora] = useState(reserva.hora);
   const [personas, setPersonas] = useState(String(reserva.personas));
@@ -34,9 +52,51 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
   const [resultado, setResultado] = useState<ResultadoEdicion>({});
   const [cargando, setCargando] = useState(false);
   const enviando = useRef(false);
-  const horas = horasDisponibles(fecha, reserva.horarios);
+  const horas = horasDisponibles(fecha, reserva.horarios, ahora);
   function limpiar() {
     setResultado({});
+  }
+  async function buscarMesas() {
+    if (enviando.current || resultado.sinSesion) return;
+    const errores = validarVisita({ fecha, hora, personas }, reserva.horarios);
+    if (Object.keys(errores).length) {
+      setResultado({ errores });
+      return;
+    }
+    enviando.current = true;
+    setCargando(true);
+    setResultado({});
+    try {
+      const alternativas = await consultarMesasAlternativas(
+        reserva.reservacionId,
+        {
+          fecha,
+          hora,
+          personas,
+          mesaId: mesa.mesaId,
+          version: reserva.version,
+        },
+      );
+      setResultado({
+        ...alternativas,
+        ...(Number(personas) > mesa.capacidad && !alternativas.error
+          ? {
+              error:
+                "Elegí una mesa con capacidad suficiente para " +
+                personas +
+                " personas antes de guardar.",
+            }
+          : {}),
+      });
+    } catch {
+      setResultado({
+        error:
+          "No pudimos cargar las mesas disponibles. Intentá buscar nuevamente.",
+      });
+    } finally {
+      enviando.current = false;
+      setCargando(false);
+    }
   }
   async function guardar() {
     if (enviando.current || resultado.sinSesion) return;
@@ -48,10 +108,12 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
       return;
     }
     const errores = validarVisita({ fecha, hora, personas }, reserva.horarios);
-    if (Number(personas) > mesa.capacidad)
-      errores.personas = `Esta mesa admite hasta ${mesa.capacidad} personas.`;
     if (Object.keys(errores).length) {
       setResultado({ errores });
+      return;
+    }
+    if (Number(personas) > mesa.capacidad) {
+      await buscarMesas();
       return;
     }
     enviando.current = true;
@@ -84,8 +146,8 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
           role="status"
           className="rounded-xl border border-green-800 bg-green-950/40 p-4 text-green-200"
         >
-          Tu reservación se modificó correctamente. Podés consultar el aviso
-          con los datos actualizados en tus notificaciones.
+          Tu reservación se modificó correctamente. Podés consultar el aviso con
+          los datos actualizados en tus notificaciones.
         </p>
         <ResumenReserva reserva={resultado.reserva} />
         <Link
@@ -102,7 +164,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
         <h2 className="mb-3 text-xl">Tu reservación actual</h2>
         <ResumenReserva reserva={reserva} />
       </section>
-      {!puedeModificarReserva(reserva) ? (
+      {!puedeModificarReserva(reserva, ahora) ? (
         <p role="alert">
           Solo podés modificar una reservación confirmada que todavía no haya
           comenzado.
@@ -130,7 +192,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
                 <Input
                   id="fecha"
                   type="date"
-                  min={fechaLocal()}
+                  min={fechaLocal(ahora)}
                   value={fecha}
                   onChange={(e) => {
                     setFecha(e.target.value);
@@ -205,14 +267,38 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
               Mesa seleccionada: {mesa.numero} · Capacidad: {mesa.capacidad}{" "}
               personas · Duración: 2 horas.
             </p>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => void buscarMesas()}>
+                Buscar otra mesa
+              </Button>
+              {mesa.mesaId !== reserva.mesaId && (
+                <Button
+                  onClick={() => {
+                    setMesa({
+                      mesaId: reserva.mesaId,
+                      numero: reserva.mesa,
+                      capacidad: reserva.capacidad,
+                      zona: null,
+                    });
+                    setResultado({});
+                  }}
+                >
+                  Volver a la mesa original
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-zinc-400">
+              Podés buscar mesas para los datos actuales. La mesa seleccionada
+              se comprobará nuevamente al guardar.
+            </p>
             <FieldError id="mesaId-error" message={resultado.errores?.mesaId} />
             {resultado.alternativas && (
               <section aria-label="Mesas alternativas" className="space-y-3">
                 <h3 className="text-xl">Elegí otra mesa disponible</h3>
                 {resultado.alternativas.length === 0 ? (
                   <p>
-                    No hay mesas disponibles para esos datos. Probá otra fecha
-                    u hora.
+                    No hay mesas disponibles para esos datos. Probá otra fecha u
+                    hora.
                   </p>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -265,12 +351,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
           {resultado.sinSesion && (
             <Link
               className="mt-4 inline-block text-orange-300"
-              href={
-                "/login?next=" +
-                encodeURIComponent(
-                  `/perfil/reservaciones/${reserva.reservacionId}/editar`,
-                )
-              }
+              href={loginEdicion(reserva.reservacionId)}
             >
               Iniciar sesión
             </Link>
@@ -278,7 +359,7 @@ export function EditarReservaForm({ reserva }: { reserva: DetalleReserva }) {
           {resultado.recargar && (
             <a
               className="mt-4 inline-block text-orange-300"
-              href={`/perfil/reservaciones/${reserva.reservacionId}/editar`}
+              href={rutaEdicion(reserva.reservacionId)}
             >
               Recargar datos actuales
             </a>

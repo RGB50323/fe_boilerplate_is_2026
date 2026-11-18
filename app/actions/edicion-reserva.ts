@@ -4,7 +4,8 @@ import { llamar, ERROR_GENERICO } from "@/lib/api";
 import {
   esDetalleReserva,
   idReservaValido,
-  type CamposEdicion,
+  esCamposEdicion,
+  versionValida,
   type ResultadoEdicion,
 } from "@/lib/edicion-reserva";
 import {
@@ -28,9 +29,11 @@ export async function obtenerReservacion(
 
 export async function modificarReservacion(
   id: string,
-  datos: CamposEdicion,
+  datos: unknown,
 ): Promise<ResultadoEdicion> {
   if (!idReservaValido(id)) return { error: "Reservación no encontrada." };
+  if (!esCamposEdicion(datos))
+    return { error: "Datos de edición inválidos. Revisá el formulario." };
   // La API valida horarios y capacidad con datos actuales de la base.
   const errores: Record<string, string> = validarVisita({
     fecha: datos.fecha,
@@ -43,10 +46,7 @@ export async function modificarReservacion(
     datos.mesaId > 2147483647
   )
     errores.mesaId = "Seleccioná una mesa válida.";
-  if (
-    typeof datos.version !== "string" ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(datos.version)
-  )
+  if (!versionValida(datos.version))
     return { error: "Recargá los datos de la reservación.", recargar: true };
   if (Object.keys(errores).length) return { errores };
   const resultado = await llamar<unknown>(`reservaciones/${id}`, {
@@ -85,6 +85,22 @@ export async function modificarReservacion(
         "No pudimos confirmar el estado de la reservación. Recargá sus datos.",
       recargar: true,
     };
+  const alternativas = await consultarMesasAlternativas(id, datos);
+  return {
+    ...alternativas,
+    error:
+      resultado.error + (alternativas.error ? " " + alternativas.error : ""),
+  };
+}
+
+export async function consultarMesasAlternativas(
+  id: string,
+  datos: unknown,
+): Promise<ResultadoEdicion> {
+  if (!idReservaValido(id)) return { error: "Reservación no encontrada." };
+  if (!esCamposEdicion(datos)) return { error: "Datos de búsqueda inválidos." };
+  const errores = validarVisita(datos);
+  if (Object.keys(errores).length) return { errores };
   const query = new URLSearchParams({
     fecha: datos.fecha,
     hora: datos.hora,
@@ -96,11 +112,13 @@ export async function modificarReservacion(
   if (!alternativas.ok)
     return {
       ...alternativas,
-      error:
-        resultado.error +
-        " No pudimos cargar las alternativas. Intentá de nuevo.",
+      error: "No pudimos cargar las alternativas. Intentá buscar nuevamente.",
     };
   if (!Array.isArray(alternativas.datos) || !alternativas.datos.every(esMesa))
-    return { error: ERROR_GENERICO };
-  return { error: resultado.error, alternativas: alternativas.datos };
+    return {
+      error:
+        "No pudimos leer las mesas alternativas. Recargá los datos antes de continuar.",
+      recargar: true,
+    };
+  return { alternativas: alternativas.datos };
 }

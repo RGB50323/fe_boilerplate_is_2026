@@ -1,3 +1,4 @@
+import { esRutaEdicion } from "@/lib/edicion-reserva";
 // Lista explícita: nunca redirigimos a una URL externa proporcionada por el navegador.
 export function retornoLogin(valor: unknown): string {
   if (
@@ -14,7 +15,7 @@ export function retornoLogin(valor: unknown): string {
       (!["/reservas/nueva", "/perfil/reservaciones", "/reservas"].includes(
         url.pathname,
       ) &&
-        !/^\/perfil\/reservaciones\/R-\d{1,10}\/editar$/.test(url.pathname))
+        !esRutaEdicion(url.pathname))
     )
       return "/menu";
     return url.pathname + url.search;

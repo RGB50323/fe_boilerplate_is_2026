@@ -34,7 +34,8 @@ export function puedeModificarReserva(
   );
 }
 
-export const idReservaValido = (id: string) =>
+export const idReservaValido = (id: unknown): id is string =>
+  typeof id === "string" &&
   /^R-\d{1,10}$/.test(id) &&
   Number(id.slice(2)) > 0 &&
   Number(id.slice(2)) <= 2147483647;
@@ -44,9 +45,37 @@ export function esDetalleReserva(valor: unknown): valor is DetalleReserva {
   return (
     Number.isInteger(dato.capacidad) &&
     dato.capacidad > 0 &&
-    typeof dato.version === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(dato.version) &&
+    versionValida(dato.version) &&
     Array.isArray(dato.horarios) &&
     dato.horarios.every(esHorarioSucursal)
+  );
+}
+
+export const versionValida = (valor: unknown): valor is string =>
+  typeof valor === "string" &&
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(valor);
+
+export function esCamposEdicion(valor: unknown): valor is CamposEdicion {
+  if (!valor || typeof valor !== "object") return false;
+  const datos = valor as Record<string, unknown>;
+  return (
+    typeof datos.fecha === "string" &&
+    typeof datos.hora === "string" &&
+    typeof datos.personas === "string" &&
+    typeof datos.mesaId === "number" &&
+    typeof datos.version === "string"
+  );
+}
+const PREFIJO_EDICION = "/perfil/reservaciones/";
+const SUFIJO_EDICION = "/editar";
+export const rutaEdicion = (id: string) =>
+  PREFIJO_EDICION + id + SUFIJO_EDICION;
+export const loginEdicion = (id: string) =>
+  "/login?next=" + encodeURIComponent(rutaEdicion(id));
+export function esRutaEdicion(ruta: string) {
+  return (
+    ruta.startsWith(PREFIJO_EDICION) &&
+    ruta.endsWith(SUFIJO_EDICION) &&
+    idReservaValido(ruta.slice(PREFIJO_EDICION.length, -SUFIJO_EDICION.length))
   );
 }
