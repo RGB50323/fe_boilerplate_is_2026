@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Badge } from "@/components/ui/badge";
 import type { Platillo } from "@/lib/platillos";
 

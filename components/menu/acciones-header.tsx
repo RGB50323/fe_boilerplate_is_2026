@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Button } from "@/components/ui/button";
 
 export type EnlaceHeader = { href: string; texto: string; destacado?: boolean };

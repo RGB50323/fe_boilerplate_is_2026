@@ -26,12 +26,6 @@ vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout }));
 vi.mock("@/components/notificaciones/campana-notificaciones", () => ({
   CampanaNotificaciones: () => null,
 }));
-vi.mock("@/lib/sucursales", () => ({
-  SUCURSALES: [
-    { id: 1, nombre: "Escalón" },
-    { id: 2, nombre: "Santa Tecla" },
-  ],
-}));
 
 const platillos = Array.from({ length: 12 }, (_, i) => ({
   platilloId: i + 1,
@@ -108,6 +102,11 @@ const tablaVentas = async () =>
     (await screen.findByRole("heading", { name: "Ventas confirmadas" })).closest("section")!,
   );
 
+const sucursalesPrueba = [
+  { id: 1, nombre: "Escalón" },
+  { id: 2, nombre: "Santa Tecla" },
+];
+
 describe("dashboard de ventas", () => {
   beforeEach(() => {
     mocks.router.replace.mockClear();
@@ -120,12 +119,12 @@ describe("dashboard de ventas", () => {
 
   it("muestra el estado de carga mientras espera al backend", () => {
     mocks.consultarDashboard.mockReturnValue(new Promise(() => {}));
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     expect(screen.getByText("Cargando dashboard...")).toBeInTheDocument();
   });
 
   it("muestra ventas totales, pedidos y ticket promedio", async () => {
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     await screen.findByText("Ventas totales");
     expect(indicador("Ventas totales").getByText("$8,120.00")).toBeInTheDocument();
     expect(indicador("Pedidos").getByText("640")).toBeInTheDocument();
@@ -134,7 +133,7 @@ describe("dashboard de ventas", () => {
 
   it("consulta con los filtros de la URL", async () => {
     mocks.params.current = new URLSearchParams("periodo=semana&sucursal=2&dia=5");
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     await screen.findByText("Ventas totales");
 
     const filtros = { periodo: "semana", desde: "", hasta: "", sucursalId: "2", dia: "5" };
@@ -144,7 +143,7 @@ describe("dashboard de ventas", () => {
   });
 
   it("muestra la tabla por sucursal con el ticket y el total general del backend", async () => {
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     const seccion = within(
       (await screen.findByRole("heading", { name: "Ventas por sucursal" })).closest("section")!,
     );
@@ -162,7 +161,7 @@ describe("dashboard de ventas", () => {
 
   describe("ventas confirmadas", () => {
     it("lista cada venta con fecha y hora local, pedido, tipo y montos", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const seccion = await tablaVentas();
       const filas = seccion.getAllByRole("row").slice(1);
       expect(filas).toHaveLength(2);
@@ -182,21 +181,21 @@ describe("dashboard de ventas", () => {
     });
 
     it("con todas las sucursales muestra la columna Sucursal", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const seccion = await tablaVentas();
       expect(seccion.getByRole("columnheader", { name: "Sucursal" })).toBeInTheDocument();
     });
 
     it("con una sucursal elegida oculta la columna Sucursal", async () => {
       mocks.params.current = new URLSearchParams("periodo=mes&sucursal=1");
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const seccion = await tablaVentas();
       await seccion.findByText("ESC-0001");
       expect(seccion.queryByRole("columnheader", { name: "Sucursal" })).not.toBeInTheDocument();
     });
 
     it("pasa a la página siguiente", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const seccion = await tablaVentas();
       await seccion.findByText("ESC-0001");
 
@@ -212,14 +211,14 @@ describe("dashboard de ventas", () => {
 
     it("si falla la lista permite reintentar", async () => {
       mocks.consultarVentas.mockResolvedValue({ error: "x", motivo: "error" });
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       expect(await screen.findByText("No pudimos cargar las ventas")).toBeInTheDocument();
     });
   });
 
   describe("filtros", () => {
     it("al elegir un periodo actualiza la URL", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: "Hoy" }));
@@ -230,7 +229,7 @@ describe("dashboard de ventas", () => {
 
     it("al elegir una sucursal actualiza la URL", async () => {
       mocks.params.current = new URLSearchParams("periodo=hoy");
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       await elegir("Sucursal", "Santa Tecla");
@@ -241,7 +240,7 @@ describe("dashboard de ventas", () => {
 
     it("limpiar filtros vuelve a Mes y Todas", async () => {
       mocks.params.current = new URLSearchParams("periodo=hoy&sucursal=2&dia=5");
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
@@ -251,7 +250,7 @@ describe("dashboard de ventas", () => {
     });
 
     it("no aplica un rango con fecha final anterior a la inicial", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: "Personalizado" }));
@@ -266,7 +265,7 @@ describe("dashboard de ventas", () => {
     });
 
     it("aplica un rango válido", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: /Rango de fechas/ }));
@@ -282,7 +281,7 @@ describe("dashboard de ventas", () => {
 
     it("muestra el rango del periodo en el botón de fechas", async () => {
       mocks.params.current = new URLSearchParams("periodo=rango&desde=2026-10-01&hasta=2026-10-31");
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       expect(
         screen.getByRole("button", { name: /01\/10\/2026 – 31\/10\/2026/ }),
       ).toBeInTheDocument();
@@ -291,7 +290,7 @@ describe("dashboard de ventas", () => {
 
   describe("platillos más vendidos", () => {
     it("muestra el top 10 en gráfica y tabla, y permite ver todos", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const seccion = within(
         (await screen.findByRole("heading", { name: "Platillos más vendidos" })).closest("section")!,
       );
@@ -314,7 +313,7 @@ describe("dashboard de ventas", () => {
 
   describe("horarios pico", () => {
     it("numera las 3 franjas pico prefiriendo la más temprana en un empate", async () => {
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       const lista = await screen.findByText("Franjas con más ventas");
       const items = within(lista.nextElementSibling as HTMLElement).getAllByRole("listitem");
       expect(items.map((li) => li.textContent)).toEqual([
@@ -326,7 +325,7 @@ describe("dashboard de ventas", () => {
 
     it("al elegir un día actualiza la URL", async () => {
       mocks.params.current = new URLSearchParams("periodo=mes");
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Franjas con más ventas");
 
       await elegir("Día de la semana", "Viernes");
@@ -338,7 +337,7 @@ describe("dashboard de ventas", () => {
 
   it("sin ventas muestra el mensaje, un total de $0.00 y no permite exportar", async () => {
     mocks.consultarDashboard.mockResolvedValue({ dashboard: sinVentas });
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
 
     expect(await screen.findByText("Sin ventas en el periodo seleccionado")).toBeInTheDocument();
     expect(indicador("Ventas totales").getByText("$0.00")).toBeInTheDocument();
@@ -351,7 +350,7 @@ describe("dashboard de ventas", () => {
       error: "No pudimos cargar el dashboard",
       motivo: "error",
     });
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     expect(await screen.findByText("No pudimos cargar el dashboard")).toBeInTheDocument();
 
     mocks.consultarDashboard.mockResolvedValue({ dashboard });
@@ -364,7 +363,7 @@ describe("dashboard de ventas", () => {
       error: "No tenés acceso al dashboard de ventas.",
       motivo: "sin-acceso",
     });
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     expect(await screen.findByText("No tenés acceso al dashboard de ventas.")).toBeInTheDocument();
     expect(screen.queryByText("Ventas totales")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
@@ -385,7 +384,7 @@ describe("dashboard de ventas", () => {
         }),
       );
       vi.stubGlobal("fetch", fetchMock);
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: /Exportar CSV/ }));
@@ -411,7 +410,7 @@ describe("dashboard de ventas", () => {
           ),
         ),
       );
-      render(<DashboardView />);
+      render(<DashboardView sucursales={sucursalesPrueba} />);
       await screen.findByText("Ventas totales");
 
       fireEvent.click(screen.getByRole("button", { name: /Exportar CSV/ }));
@@ -423,7 +422,7 @@ describe("dashboard de ventas", () => {
 
   it("al cerrar sesión llama a logout y va al login", async () => {
     mocks.logout.mockResolvedValue(undefined);
-    render(<DashboardView />);
+    render(<DashboardView sucursales={sucursalesPrueba} />);
     await screen.findByText("Ventas totales");
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));

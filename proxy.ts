@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { rolesRequeridosPara, tieneRolPermitido } from "@/lib/roles";
+import {
+  rolesRequeridosPara,
+  tieneRolPermitido,
+  tokenVencido,
+} from "@/lib/roles";
 import { SESSION_COOKIE } from "@/lib/session";
 import { retornoLogin } from "@/lib/retorno-login";
 
@@ -12,14 +16,20 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = publicRoutes.includes(pathname);
   const isGuestOnlyRoute = guestOnlyRoutes.includes(pathname);
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const cookie = request.cookies.get(SESSION_COOKIE)?.value;
+  const vencida = cookie ? tokenVencido(cookie) : false;
+  const token = vencida ? undefined : cookie;
   const hasSession = Boolean(token);
+  const responder = (respuesta: NextResponse) => {
+    if (vencida) respuesta.cookies.delete(SESSION_COOKIE);
+    return respuesta;
+  };
 
   if (!isPublicRoute && !isGuestOnlyRoute && !hasSession) {
     const login = new URL("/login", request.nextUrl);
     const siguiente = retornoLogin(pathname + request.nextUrl.search);
     if (siguiente !== "/menu") login.searchParams.set("next", siguiente);
-    return NextResponse.redirect(login);
+    return responder(NextResponse.redirect(login));
   }
 
   if (
@@ -27,15 +37,15 @@ export function proxy(request: NextRequest) {
     hasSession &&
     retornoLogin(request.nextUrl.searchParams.get("next")) === "/menu"
   ) {
-    return NextResponse.redirect(new URL("/menu", request.nextUrl));
+    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
   }
 
   const requiredRoles = rolesRequeridosPara(pathname);
   if (token && requiredRoles && !tieneRolPermitido(token, requiredRoles)) {
-    return NextResponse.redirect(new URL("/menu", request.nextUrl));
+    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
   }
 
-  return NextResponse.next();
+  return responder(NextResponse.next());
 }
 
 export const config = {

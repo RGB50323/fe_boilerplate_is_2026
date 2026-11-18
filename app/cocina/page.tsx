@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import { Fraunces } from "next/font/google";
 import { redirect } from "next/navigation";
 import { urlSocketCocina } from "@/lib/cocina/pedidos";
-import { ROLES_COCINA, obtenerSucursalId, tieneRolPermitido } from "@/lib/roles";
+import {
+  ROLES_COCINA,
+  obtenerSucursalId,
+  tieneRolPermitido,
+} from "@/lib/roles";
 import { getSession } from "@/lib/session";
-import { SUCURSALES } from "@/lib/sucursales";
+import { listarSucursales } from "@/app/actions/reservaciones";
 import { TableroCocina } from "./tablero-cocina";
 
 const fraunces = Fraunces({
@@ -27,10 +31,14 @@ export default async function CocinaPage() {
   }
 
   const sucursalId = obtenerSucursalId(token);
+
+  const sucursales =
+    sucursalId === null ? [] : (await listarSucursales()).sucursales;
+
   const sucursal =
     sucursalId === null
       ? null
-      : (SUCURSALES.find((s) => s.id === sucursalId)?.nombre ??
+      : (sucursales.find((s) => s.id === sucursalId)?.nombre ??
         `Sucursal ${sucursalId}`);
 
   return (
