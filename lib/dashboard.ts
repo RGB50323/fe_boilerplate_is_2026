@@ -78,6 +78,9 @@ export type FiltrosDashboard = {
   dia: string; // "" = todos los días (solo afecta horarios pico)
 };
 
+// Lo que comparten la vista general y la comparativa.
+export type FiltrosPeriodo = Pick<FiltrosDashboard, "periodo" | "desde" | "hasta">;
+
 export const FILTROS_INICIALES: FiltrosDashboard = {
   periodo: "mes",
   desde: "",
@@ -119,6 +122,11 @@ export function filtrosDesdeParams(p: Params): FiltrosDashboard {
   };
 }
 
+// Solo el periodo, para conservarlo al cambiar entre vista general y comparativa.
+export function periodoAQuery(f: FiltrosPeriodo): string {
+  return filtrosAQuery({ ...f, sucursalId: "", dia: "" });
+}
+
 export function filtrosAQuery(f: FiltrosDashboard): string {
   const qs = new URLSearchParams();
   qs.set("periodo", f.periodo);
@@ -140,7 +148,7 @@ function sumarDias(fecha: string, dias: number): string {
 // Traduce el periodo a fechas concretas (zona horaria del restaurante).
 // La semana empieza el lunes.
 export function rangoDelPeriodo(
-  f: FiltrosDashboard,
+  f: FiltrosPeriodo,
   ahora = new Date(),
 ): { desde: string; hasta: string } {
   const hoy = fechaLocal(ahora);
@@ -287,7 +295,7 @@ function celdaCsv(valor: string | number): string {
 export const ENCABEZADO_CSV_SUCURSALES = ["Sucursal", "Ventas", "Pedidos", "Ticket promedio"];
 
 // Criterio 14: el CSV coincide con la tabla "Ventas por sucursal": una fila por
-// sucursal y la fila "Total general". Mismo formato que devuelve
+// sucursal (mayor venta primero) y la fila "Total general". Mismo formato que devuelve
 // GET /dashboard/ventas/exportar del backend.
 export function generarCsvSucursales(
   datos: Pick<DashboardRespuesta, "sucursales" | "totalGeneral">,
@@ -300,7 +308,9 @@ export function generarCsvSucursales(
   ];
   return [
     ENCABEZADO_CSV_SUCURSALES,
-    ...datos.sucursales.map((s) => fila(s.nombre, s)),
+    ...[...datos.sucursales]
+      .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"))
+      .map((s) => fila(s.nombre, s)),
     fila("Total general", datos.totalGeneral),
   ]
     .map((f) => f.map(celdaCsv).join(","))
