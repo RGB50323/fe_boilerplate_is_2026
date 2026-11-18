@@ -4,6 +4,10 @@ import { listarMisPedidos } from "@/app/actions/pedidos";
 import { MisPedidosView } from "@/components/pedidos/mis-pedidos-view";
 import type { PedidoResumen } from "@/lib/seguimiento";
 
+// La sección de reseñas pendientes (H21) se prueba aparte
+vi.mock("@/components/resenas/pendientes-resena", () => ({
+  PendientesResena: () => null,
+}));
 vi.mock("@/app/actions/pedidos", () => ({ listarMisPedidos: vi.fn() }));
 
 const pedido: PedidoResumen = {
