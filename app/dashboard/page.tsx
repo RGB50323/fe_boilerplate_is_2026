@@ -3,6 +3,7 @@ import { usarDatosDePrueba } from "@/lib/dashboard-datos-prueba";
 import { getUsuarioActual, ROL_GERENTE_GENERAL } from "@/lib/session";
 import { DashboardView } from "./dashboard-view";
 import { DashboardSinAcceso } from "./sin-acceso";
+import { listarSucursales } from "@/app/actions/reservaciones";
 
 export const metadata: Metadata = {
   title: "Dashboard de ventas",
@@ -17,10 +18,16 @@ export default async function DashboardPage() {
   if (usuario.estado === "ok" && usuario.usuario.rol !== ROL_GERENTE_GENERAL) {
     return <DashboardSinAcceso motivo="sin-acceso" />;
   }
-  
+
   if (usuario.estado === "error" && !usarDatosDePrueba()) {
     return <DashboardSinAcceso motivo="error" />;
   }
 
-  return <DashboardView />;
+  const resultadoSucursales = await listarSucursales();
+
+  if (resultadoSucursales.error) {
+    return <DashboardSinAcceso motivo="error" />;
+  }
+
+  return <DashboardView sucursales={resultadoSucursales.sucursales} />;
 }

@@ -48,7 +48,7 @@ import {
   type FiltrosDashboard,
   type Periodo,
 } from "@/lib/dashboard";
-import { SUCURSALES } from "@/lib/sucursales";
+import type { Sucursal } from "@/lib/menu";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -94,18 +94,23 @@ function IconoBarras({ className = "" }: { className?: string }) {
   );
 }
 
-function Dashboard() {
+function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
   const router = useRouter();
   const qs = useSearchParams().toString();
   const filtros = useMemo(() => filtrosDe(qs), [qs]);
 
   const [mostrarRango, setMostrarRango] = useState(false);
-  const [rangoEntrada, setRangoEntrada] = useState(() => rangoDelPeriodo(filtros));
+  const [rangoEntrada, setRangoEntrada] = useState(() =>
+    rangoDelPeriodo(filtros),
+  );
   const [erroresRango, setErroresRango] = useState<ErroresRango>({});
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [lista, setLista] = useState<ResultadoLista | null>(null);
   const [reintento, setReintento] = useState(0);
-  const [paginaEn, setPaginaEn] = useState<{ qs: string; pagina: number } | null>(null);
+  const [paginaEn, setPaginaEn] = useState<{
+    qs: string;
+    pagina: number;
+  } | null>(null);
   const [verTodosEn, setVerTodosEn] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [exportando, setExportando] = useState(false);
@@ -133,7 +138,8 @@ function Dashboard() {
   useEffect(() => {
     let activo = true;
     consultarVentas(filtrosDe(qs), pagina).then((respuesta) => {
-      if (activo) setLista({ clave: `${qs}#${reintento}#${pagina}`, respuesta });
+      if (activo)
+        setLista({ clave: `${qs}#${reintento}#${pagina}`, respuesta });
     });
     return () => {
       activo = false;
@@ -184,13 +190,16 @@ function Dashboard() {
       });
       const tipo = res.headers.get("Content-Type") ?? "";
       if (!res.ok || !tipo.includes("text/csv")) {
-        const data = tipo.includes("json") ? await res.json().catch(() => null) : null;
+        const data = tipo.includes("json")
+          ? await res.json().catch(() => null)
+          : null;
         throw new Error(data?.error ?? "No pudimos generar el archivo CSV.");
       }
       const blob = await res.blob();
       const nombre =
-        /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ??
-        nombreArchivoCsv(rangoDelPeriodo(filtros));
+        /filename="([^"]+)"/.exec(
+          res.headers.get("Content-Disposition") ?? "",
+        )?.[1] ?? nombreArchivoCsv(rangoDelPeriodo(filtros));
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
@@ -203,7 +212,9 @@ function Dashboard() {
     } catch (error) {
       console.error("Error al exportar CSV:", error);
       avisar(
-        error instanceof Error ? error.message : "No pudimos generar el archivo CSV.",
+        error instanceof Error
+          ? error.message
+          : "No pudimos generar el archivo CSV.",
         "error",
       );
     } finally {
@@ -233,7 +244,10 @@ function Dashboard() {
       {/* Encabezado con navegación */}
       <header className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-zinc-700">
         <p className="py-4 text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
-        <nav aria-label="Principal" className="flex self-stretch font-sans text-sm sm:text-base">
+        <nav
+          aria-label="Principal"
+          className="flex self-stretch font-sans text-sm sm:text-base"
+        >
           <Link
             href="/menu"
             className="flex items-center border-b-2 border-transparent px-4 text-zinc-400 transition-colors hover:text-zinc-100"
@@ -264,7 +278,11 @@ function Dashboard() {
       {/* Vista general / comparativa */}
       <div className="mt-6 flex items-center gap-3 font-sans text-sm">
         <span className="text-zinc-400">Vista</span>
-        <div role="group" aria-label="Vista" className="flex rounded-xl bg-[#2b2b2f] p-1">
+        <div
+          role="group"
+          aria-label="Vista"
+          className="flex rounded-xl bg-[#2b2b2f] p-1"
+        >
           <button
             type="button"
             aria-pressed="true"
@@ -296,15 +314,23 @@ function Dashboard() {
         className="rounded-2xl bg-[#2b2b2f] p-4 font-sans sm:px-6"
       >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
-          <div role="group" aria-label="Periodo" className="flex flex-wrap items-center gap-2">
-            <span aria-hidden="true" className="mr-1 text-sm text-zinc-400">Periodo</span>
+          <div
+            role="group"
+            aria-label="Periodo"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span aria-hidden="true" className="mr-1 text-sm text-zinc-400">
+              Periodo
+            </span>
             {PERIODOS.map((p) => (
               <button
                 key={p.value}
                 type="button"
                 aria-pressed={periodoActivo === p.value}
                 onClick={() => elegirPeriodo(p.value)}
-                className={periodoActivo === p.value ? chipActivo : chipInactivo}
+                className={
+                  periodoActivo === p.value ? chipActivo : chipInactivo
+                }
               >
                 {p.label}
               </button>
@@ -315,7 +341,9 @@ function Dashboard() {
             type="button"
             aria-expanded={mostrarRango}
             aria-controls="panel-rango"
-            onClick={() => (mostrarRango ? setMostrarRango(false) : elegirPeriodo("rango"))}
+            onClick={() =>
+              mostrarRango ? setMostrarRango(false) : elegirPeriodo("rango")
+            }
             className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-700 bg-[#262626] px-4 py-2 text-sm tabular-nums text-zinc-100 focus-visible:outline-2 focus-visible:outline-orange-400"
           >
             <span className="sr-only">Rango de fechas: </span>
@@ -331,7 +359,10 @@ function Dashboard() {
             value={filtros.sucursalId}
             placeholder="Todas"
             onChange={(sucursalId) => navegar({ ...filtros, sucursalId })}
-            opciones={SUCURSALES.map((s) => ({ value: s.id, label: s.nombre }))}
+            opciones={sucursales.map((s) => ({
+              value: s.id,
+              label: s.nombre,
+            }))}
           />
 
           <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
@@ -363,39 +394,59 @@ function Dashboard() {
             className="mt-4 flex flex-wrap items-start gap-4 border-t border-zinc-700 pt-4"
           >
             <div className="min-w-40">
-              <label htmlFor="desde" className="mb-1 block text-sm font-medium text-orange-200">
+              <label
+                htmlFor="desde"
+                className="mb-1 block text-sm font-medium text-orange-200"
+              >
                 Desde
               </label>
               <Input
                 id="desde"
                 type="date"
                 value={rangoEntrada.desde}
-                onChange={(e) => setRangoEntrada((r) => ({ ...r, desde: e.target.value }))}
+                onChange={(e) =>
+                  setRangoEntrada((r) => ({ ...r, desde: e.target.value }))
+                }
                 aria-invalid={Boolean(erroresRango.desde)}
-                aria-describedby={erroresRango.desde ? "desde-error" : undefined}
+                aria-describedby={
+                  erroresRango.desde ? "desde-error" : undefined
+                }
                 className="py-2"
               />
               {erroresRango.desde && (
-                <p id="desde-error" className="mt-1 max-w-64 text-sm text-red-300">
+                <p
+                  id="desde-error"
+                  className="mt-1 max-w-64 text-sm text-red-300"
+                >
                   {erroresRango.desde}
                 </p>
               )}
             </div>
             <div className="min-w-40">
-              <label htmlFor="hasta" className="mb-1 block text-sm font-medium text-orange-200">
+              <label
+                htmlFor="hasta"
+                className="mb-1 block text-sm font-medium text-orange-200"
+              >
                 Hasta
               </label>
               <Input
                 id="hasta"
                 type="date"
                 value={rangoEntrada.hasta}
-                onChange={(e) => setRangoEntrada((r) => ({ ...r, hasta: e.target.value }))}
+                onChange={(e) =>
+                  setRangoEntrada((r) => ({ ...r, hasta: e.target.value }))
+                }
                 aria-invalid={Boolean(erroresRango.hasta)}
-                aria-describedby={erroresRango.hasta ? "hasta-error" : undefined}
+                aria-describedby={
+                  erroresRango.hasta ? "hasta-error" : undefined
+                }
                 className="py-2"
               />
               {erroresRango.hasta && (
-                <p id="hasta-error" className="mt-1 max-w-64 text-sm text-red-300">
+                <p
+                  id="hasta-error"
+                  className="mt-1 max-w-64 text-sm text-red-300"
+                >
                   {erroresRango.hasta}
                 </p>
               )}
@@ -420,7 +471,11 @@ function Dashboard() {
       </section>
 
       {/* Resultados */}
-      <section aria-busy={cargando} aria-label="Indicadores de ventas" className="mt-8">
+      <section
+        aria-busy={cargando}
+        aria-label="Indicadores de ventas"
+        className="mt-8"
+      >
         {cargando && <DashboardSkeleton />}
 
         {respuesta?.error && respuesta.motivo === "sin-acceso" && (
@@ -439,7 +494,9 @@ function Dashboard() {
 
         {respuesta?.error && respuesta.motivo === "error" && (
           <EmptyState mensaje={respuesta.error} variante="error">
-            <Button onClick={() => setReintento((n) => n + 1)}>Reintentar</Button>
+            <Button onClick={() => setReintento((n) => n + 1)}>
+              Reintentar
+            </Button>
           </EmptyState>
         )}
 
@@ -484,7 +541,9 @@ function Indicador({
   return (
     <div className="rounded-2xl bg-[#2b2b2f] p-5 sm:p-6">
       <p className="font-sans text-sm text-zinc-400">{titulo}</p>
-      <p className="mt-2 text-3xl tabular-nums text-zinc-100 sm:text-4xl">{valor}</p>
+      <p className="mt-2 text-3xl tabular-nums text-zinc-100 sm:text-4xl">
+        {valor}
+      </p>
       <p className="mt-1 font-sans text-xs text-zinc-400">{detalle}</p>
     </div>
   );
@@ -507,7 +566,9 @@ function EncabezadoSeccion({
         <h2 id={id} className="text-2xl text-zinc-100 sm:text-3xl">
           {titulo}
         </h2>
-        {detalle && <p className="font-sans text-sm text-zinc-400">{detalle}</p>}
+        {detalle && (
+          <p className="font-sans text-sm text-zinc-400">{detalle}</p>
+        )}
       </div>
       {children}
     </div>
@@ -573,7 +634,9 @@ function Contenido({
   onVerTodos: (v: boolean) => void;
 }) {
   const total = dashboard.totalGeneral;
-  const sucursales = [...dashboard.sucursales].sort((a, b) => b.ventas - a.ventas);
+  const sucursales = [...dashboard.sucursales].sort(
+    (a, b) => b.ventas - a.ventas,
+  );
   const platillos = ordenarPlatillos(dashboard.platillos);
   const visibles = verTodos ? platillos : platillos.slice(0, LIMITE_PLATILLOS);
 
@@ -609,31 +672,53 @@ function Contenido({
               titulo="Ventas por sucursal"
             />
             <div className="overflow-x-auto rounded-2xl bg-[#2b2b2f] p-4 font-sans sm:p-6">
-              <table className="w-full text-left" aria-labelledby="titulo-sucursales">
+              <table
+                className="w-full text-left"
+                aria-labelledby="titulo-sucursales"
+              >
                 <thead className="border-b border-zinc-700 text-sm text-zinc-400">
                   <tr>
-                    <th scope="col" className={th}>Sucursal</th>
-                    <th scope="col" className={thNum}>Ventas</th>
-                    <th scope="col" className={thNum}>Pedidos</th>
-                    <th scope="col" className={thNum}>Ticket promedio</th>
+                    <th scope="col" className={th}>
+                      Sucursal
+                    </th>
+                    <th scope="col" className={thNum}>
+                      Ventas
+                    </th>
+                    <th scope="col" className={thNum}>
+                      Pedidos
+                    </th>
+                    <th scope="col" className={thNum}>
+                      Ticket promedio
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sucursales.map((s) => (
                     <tr key={s.sucursalId} className="border-b border-zinc-800">
-                      <th scope="row" className={`${td} font-normal`}>{s.nombre}</th>
+                      <th scope="row" className={`${td} font-normal`}>
+                        {s.nombre}
+                      </th>
                       <td className={tdNum}>{formatoMoneda(s.ventas)}</td>
                       <td className={tdNum}>{formatoEntero(s.pedidos)}</td>
-                      <td className={tdNum}>{formatoMoneda(s.ticketPromedio)}</td>
+                      <td className={tdNum}>
+                        {formatoMoneda(s.ticketPromedio)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-[#18181b] font-semibold">
-                    <th scope="row" className="rounded-l-lg px-3 py-3 font-semibold">Total general</th>
+                    <th
+                      scope="row"
+                      className="rounded-l-lg px-3 py-3 font-semibold"
+                    >
+                      Total general
+                    </th>
                     <td className={tdNum}>{formatoMoneda(total.ventas)}</td>
                     <td className={tdNum}>{formatoEntero(total.pedidos)}</td>
-                    <td className={`${tdNum} rounded-r-lg pr-3`}>{formatoMoneda(total.ticketPromedio)}</td>
+                    <td className={`${tdNum} rounded-r-lg pr-3`}>
+                      {formatoMoneda(total.ticketPromedio)}
+                    </td>
                   </tr>
                 </tfoot>
               </table>
@@ -655,7 +740,9 @@ function Contenido({
                   aria-expanded={verTodos}
                   className={`${botonSecundario} font-sans`}
                 >
-                  {verTodos ? "Ver solo los 10 primeros" : `Ver todos (${platillos.length})`}
+                  {verTodos
+                    ? "Ver solo los 10 primeros"
+                    : `Ver todos (${platillos.length})`}
                 </button>
               )}
             </EncabezadoSeccion>
@@ -664,20 +751,38 @@ function Contenido({
                 <GraficoPlatillos platillos={visibles} />
               </div>
               <div className="overflow-x-auto rounded-2xl bg-[#2b2b2f] p-4 sm:p-6">
-                <table className="w-full text-left" aria-labelledby="titulo-platillos">
+                <table
+                  className="w-full text-left"
+                  aria-labelledby="titulo-platillos"
+                >
                   <thead className="border-b border-zinc-700 text-sm text-zinc-400">
                     <tr>
-                      <th scope="col" className="w-10 py-3 pr-2 font-normal">#</th>
-                      <th scope="col" className={th}>Platillo</th>
-                      <th scope="col" className={thNum}>Cantidad</th>
-                      <th scope="col" className={thNum}>Monto</th>
+                      <th scope="col" className="w-10 py-3 pr-2 font-normal">
+                        #
+                      </th>
+                      <th scope="col" className={th}>
+                        Platillo
+                      </th>
+                      <th scope="col" className={thNum}>
+                        Cantidad
+                      </th>
+                      <th scope="col" className={thNum}>
+                        Monto
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {visibles.map((p, i) => (
-                      <tr key={p.platilloId} className="border-b border-zinc-800">
-                        <td className="py-3 pr-2 tabular-nums text-zinc-400">{i + 1}</td>
-                        <th scope="row" className={`${td} font-normal`}>{p.nombre}</th>
+                      <tr
+                        key={p.platilloId}
+                        className="border-b border-zinc-800"
+                      >
+                        <td className="py-3 pr-2 tabular-nums text-zinc-400">
+                          {i + 1}
+                        </td>
+                        <th scope="row" className={`${td} font-normal`}>
+                          {p.nombre}
+                        </th>
                         <td className={tdNum}>{formatoEntero(p.cantidad)}</td>
                         <td className={tdNum}>{formatoMoneda(p.monto)}</td>
                       </tr>
@@ -720,13 +825,13 @@ function Contenido({
   );
 }
 
-export function DashboardView() {
+export function DashboardView({ sucursales }: { sucursales: Sucursal[] }) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-2 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando dashboard..." />}>
-        <Dashboard />
+        <Dashboard sucursales={sucursales} />
       </Suspense>
     </main>
   );
