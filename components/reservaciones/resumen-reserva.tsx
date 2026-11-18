@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { puedeModificarReserva, rutaEdicion } from "@/lib/edicion-reserva";
+import { CancelarReserva } from "./cancelar-reserva";
 import { Badge } from "@/components/ui/badge";
 import { formatoFecha, formatoHora } from "@/lib/reservaciones";
 import type { Reservacion } from "@/lib/confirmacion-reserva";
 
 export function ResumenReserva({
-  reserva,
+  reserva: original,
   permitirEdicion = false,
   destacada = false,
 }: {
@@ -16,6 +17,9 @@ export function ResumenReserva({
   permitirEdicion?: boolean;
   destacada?: boolean;
 }) {
+  const [cancelada, setCancelada] = useState<Reservacion | null>(null);
+  const reserva =
+    cancelada?.reservacionId === original.reservacionId ? cancelada : original;
   const ref = useRef<HTMLElement>(null);
   // Al llegar desde una notificación, la reservación queda a la vista
   useEffect(() => {
@@ -68,6 +72,17 @@ export function ResumenReserva({
         >
           Modificar reservación
         </Link>
+      )}
+      {permitirEdicion && puedeModificarReserva(reserva) && (
+        <div>
+          <CancelarReserva reserva={reserva} onCancelada={setCancelada} />
+        </div>
+      )}
+      {cancelada?.reservacionId === original.reservacionId && (
+        <p role="status" className="mt-4 text-green-300">
+          Tu reservación fue cancelada. La mesa quedó disponible y recibirás un
+          aviso en tus notificaciones.
+        </p>
       )}
     </article>
   );
