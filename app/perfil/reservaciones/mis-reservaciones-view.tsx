@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listarMisReservaciones } from "@/app/actions/confirmacion-reserva";
 import { ResumenReserva } from "@/components/reservaciones/resumen-reserva";
 import { Button } from "@/components/ui/button";
 import { PageLoading } from "@/components/ui/page-loading";
+import { rutaRetorno } from "@/lib/retorno-login";
 import { Paginacion } from "@/components/ui/paginacion";
 
 type Resultado = {
@@ -22,6 +23,8 @@ export function MisReservacionesView({
   const clave = `${pagina}:${intento}`;
   const cargando = resultado?.clave !== clave;
   const respuesta = cargando ? undefined : resultado.respuesta;
+  // Al llegar desde un aviso, avanza de página hasta encontrar la reservación
+  const buscando = useRef(Boolean(destacada));
 
   useEffect(() => {
     let vigente = true;
@@ -35,6 +38,21 @@ export function MisReservacionesView({
         ) {
           setPagina(Math.max(1, respuesta.datos.totalPaginas));
           return;
+        }
+        if (buscando.current && respuesta.datos) {
+          const encontrada = respuesta.datos.datos.some(
+            (r) => r.reservacionId === destacada,
+          );
+          if (!encontrada && pagina < respuesta.datos.totalPaginas) {
+            setPagina(pagina + 1);
+            return;
+          }
+          buscando.current = false;
+          // No está en ninguna página: se muestra la primera
+          if (!encontrada && pagina !== 1) {
+            setPagina(1);
+            return;
+          }
         }
         setResultado({ clave, respuesta });
       })
@@ -50,7 +68,7 @@ export function MisReservacionesView({
     return () => {
       vigente = false;
     };
-  }, [pagina, clave]);
+  }, [pagina, clave, destacada]);
 
   return (
     <section aria-label="Mis reservaciones" aria-busy={cargando}>
@@ -64,7 +82,7 @@ export function MisReservacionesView({
           <p className="text-red-200">{respuesta.error}</p>
           {respuesta.sinSesion ? (
             <Link
-              href="/login?next=%2Fperfil%2Freservaciones"
+              href={`/login?next=${rutaRetorno(destacada)}`}
               className="mt-5 inline-block text-orange-300 underline"
             >
               Iniciar sesión
