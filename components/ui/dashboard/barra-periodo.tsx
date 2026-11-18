@@ -18,9 +18,7 @@ const chip =
 export const chipInactivo = `${chip} border-transparent bg-[#101012] text-zinc-200 hover:border-zinc-600`;
 export const chipActivo = `${chip} border-[#FF7A1A] bg-[#FF7A1A]/15 text-orange-100`;
 
-// Barra de filtros común: Hoy / Semana / Mes / Personalizado, el rango de
-// fechas (se aplica con "Aplicar", criterio de rango inválido) y Limpiar
-// filtros. `controles` va después del rango y `acciones` al final.
+
 export function BarraPeriodo({
   periodo,
   onCambiar,

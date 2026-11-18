@@ -16,7 +16,6 @@ const tdNum = `${td} text-right tabular-nums`;
 const botonPagina =
   "cursor-pointer rounded-full border border-zinc-700 bg-[#101012] px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-[#FF7A1A]/60 focus-visible:outline-2 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:opacity-40";
 
-// Lista de ventas confirmadas (una fila por pedido), paginada en el servidor.
 export function TablaVentas({
   ventas,
   cargando,

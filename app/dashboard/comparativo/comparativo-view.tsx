@@ -56,8 +56,7 @@ function Comparar() {
   const elegidas = sucursalesElegidas(filtros, IDS);
   const suficientes = elegidas.length >= MINIMO_SUCURSALES;
 
-  // Las sucursales elegidas no cambian la consulta: se piden todas y se
-  // filtran aquí, así marcar o desmarcar es instantáneo.
+
   const consultaPeriodo = periodoAQuery(filtros);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [reintento, setReintento] = useState(0);
@@ -66,7 +65,6 @@ function Comparar() {
   const respuesta = cargando || !suficientes ? null : resultado?.respuesta ?? null;
 
   useEffect(() => {
-    // Criterio: con menos de dos sucursales no se genera el comparativo.
     if (!suficientes) return;
     let activo = true;
     const { periodo, desde, hasta } = filtrosDe(qs);

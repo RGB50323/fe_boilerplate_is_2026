@@ -10,8 +10,6 @@ import {
 import { fechaLocal } from "@/lib/reservaciones";
 import { SUCURSALES } from "@/lib/sucursales";
 
-// Datos de prueba mientras el backend no tenga los endpoints.
-// Se activan con DASHBOARD_DATOS_PRUEBA=true y NUNCA en producción.
 export function usarDatosDePrueba(): boolean {
   return (
     process.env.NODE_ENV !== "production" &&

@@ -35,8 +35,6 @@ function IconoBarras({ className = "" }: { className?: string }) {
   );
 }
 
-// Encabezado común del dashboard: navegación, cerrar sesión, selector de
-// vista (conserva el periodo elegido al cambiar) y título centrado.
 export function EncabezadoDashboard({
   vista,
   titulo,

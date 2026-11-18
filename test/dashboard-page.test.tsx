@@ -33,7 +33,6 @@ const platillos = Array.from({ length: 12 }, (_, i) => ({
   cantidad: 100 - i * 5,
   monto: 500 - i * 20,
 }));
-// Empate en cantidad con el primero: debe ir después por generar menos dinero.
 platillos.push({ platilloId: 99, nombre: "Empate barato", cantidad: 100, monto: 100 });
 
 const dashboard: DashboardRespuesta = {

@@ -23,7 +23,6 @@ export function colorDiferencia(pct: number) {
   return "text-zinc-300";
 }
 
-// Detalle del comparativo; clic en un encabezado para ordenar.
 export function TablaComparativo({ filas }: { filas: FilaComparativo[] }) {
   const [orden, setOrden] = useState<Orden>({ columna: "ventas", direccion: "desc" });
 

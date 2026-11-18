@@ -8,8 +8,6 @@ export function IconoAlerta({ className = "size-3.5" }: { className?: string }) 
   );
 }
 
-// "Requiere atención" (rojo con ícono) o "En rango" (verde). Siempre con
-// texto, para no depender solo del color.
 export function EtiquetaEstado({ requiereAtencion }: { requiereAtencion: boolean }) {
   if (!requiereAtencion) {
     return (

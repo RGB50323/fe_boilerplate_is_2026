@@ -31,7 +31,6 @@ vi.mock("@/lib/sucursales", () => ({
   ],
 }));
 
-// Datos del mockup.
 const sucursales = [
   { sucursalId: 1, nombre: "Centro", ventas: 8120, pedidos: 640, ticketPromedio: 12.69 },
   { sucursalId: 2, nombre: "Escalón", ventas: 4310.25, pedidos: 330, ticketPromedio: 13.06 },
@@ -126,7 +125,6 @@ describe("comparativo de sucursales", () => {
     expect(screen.queryByRole("heading", { level: 3, name: "Santa Tecla" })).not.toBeInTheDocument();
     expect(screen.getByText("Promedio de las 2 sucursales comparadas")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Santa Tecla" })).not.toBeChecked();
-    // Entre Centro y Escalón, Escalón queda 30.6 % por debajo.
     expect(screen.getByText(/Escalón tiene ventas 30\.6 % por debajo/)).toBeInTheDocument();
   });
 

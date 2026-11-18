@@ -17,7 +17,6 @@ import {
   FILTROS_INICIALES,
 } from "@/lib/dashboard";
 
-// Domingo 8 de noviembre de 2026, 3:00 p. m. hora de El Salvador.
 const AHORA = new Date("2026-11-08T21:00:00Z");
 
 describe("ticket promedio", () => {

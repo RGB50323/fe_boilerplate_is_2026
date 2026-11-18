@@ -10,7 +10,6 @@ import {
 } from "@/lib/comparativo";
 
 const IDS = [1, 2, 3];
-// ticketPromedio lo envía el backend; aquí se usa el mismo redondeo.
 const s = (sucursalId: number, nombre: string, ventas: number, pedidos: number) => ({
   sucursalId,
   nombre,
@@ -20,7 +19,6 @@ const s = (sucursalId: number, nombre: string, ventas: number, pedidos: number) 
 });
 
 describe("calcularComparativo", () => {
-  // Datos del mockup de H29.
   const comparativo = calcularComparativo([
     s(1, "Centro", 8120, 640),
     s(2, "Escalón", 4310.25, 330),

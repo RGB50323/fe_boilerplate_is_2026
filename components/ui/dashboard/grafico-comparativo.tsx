@@ -1,9 +1,7 @@
 import { UMBRAL_ATENCION, type Comparativo } from "@/lib/comparativo";
 import { formatoMoneda } from "@/lib/dashboard";
 
-// Barras de ventas por sucursal con la línea del promedio (referencia) y la
-// del umbral de atención (promedio − 20 %). Las sucursales que requieren
-// atención van en rojo y además lo dicen en su etiqueta accesible.
+
 export function GraficoComparativo({ comparativo }: { comparativo: Comparativo }) {
   const { filas, promedio, umbral } = comparativo;
   const escala = Math.max(promedio, ...filas.map((f) => f.ventas)) * 1.15 || 1;

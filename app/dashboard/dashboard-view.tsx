@@ -117,7 +117,6 @@ function Dashboard() {
     setAviso((a) => ({ texto, variante, n: (a?.n ?? 0) + 1 }));
   }
 
-  // Criterio 14: descarga cada venta confirmada del periodo y sucursal elegidos.
   async function exportar() {
     setExportando(true);
     try {
@@ -354,7 +353,6 @@ function Contenido({
 }) {
   // Totales y tickets vienen calculados del backend (mismo cálculo que H29).
   const total = dashboard.totalGeneral;
-  // Mismo orden que el CSV del backend: mayor venta primero; en empate, por nombre.
   const sucursales = [...dashboard.sucursales].sort(
     (a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"),
   );
@@ -386,7 +384,7 @@ function Contenido({
         <EmptyState mensaje="Sin ventas en el periodo seleccionado" />
       ) : (
         <>
-          {/* Ventas por sucursal (criterio 1); el CSV exporta esta misma tabla */}
+          {/* Ventas por sucursal*/}
           <section aria-labelledby="titulo-sucursales">
             <EncabezadoSeccion
               id="titulo-sucursales"
@@ -427,7 +425,7 @@ function Contenido({
 
           {lista}
 
-          {/* Platillos más vendidos (criterios 8 y 9) */}
+          {/* Platillos más vendidos */}
           <section aria-labelledby="titulo-platillos">
             <EncabezadoSeccion
               id="titulo-platillos"
@@ -474,7 +472,7 @@ function Contenido({
             </div>
           </section>
 
-          {/* Horarios pico (criterios 10, 11 y 12) */}
+          {/* Horarios pico */}
           <section aria-labelledby="titulo-horarios">
             <EncabezadoSeccion
               id="titulo-horarios"
