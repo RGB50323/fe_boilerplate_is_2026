@@ -107,3 +107,46 @@ it("resalta la reservación que llega desde una notificación", async () => {
     "aria-current",
   );
 });
+
+it("busca en las siguientes páginas la reservación del aviso", async () => {
+  vi.mocked(listarMisReservaciones).mockImplementation(async (pagina = 1) => ({
+    datos: {
+      datos: [{ ...reserva, reservacionId: `R-00010${pagina}` }],
+      pagina,
+      total: 3,
+      totalPaginas: 3,
+    },
+  }));
+  render(<MisReservacionesView destacada="R-000103" />);
+  const tarjeta = (await screen.findByText("R-000103")).closest("article");
+  expect(tarjeta).toHaveAttribute("aria-current", "true");
+  expect(listarMisReservaciones).toHaveBeenLastCalledWith(3);
+});
+
+it("si la reservación del aviso no aparece, vuelve a la primera página", async () => {
+  vi.mocked(listarMisReservaciones).mockImplementation(async (pagina = 1) => ({
+    datos: {
+      datos: [{ ...reserva, reservacionId: `R-00020${pagina}` }],
+      pagina,
+      total: 2,
+      totalPaginas: 2,
+    },
+  }));
+  render(<MisReservacionesView destacada="R-999999" />);
+  expect(await screen.findByText("R-000201")).toBeVisible();
+  expect(screen.queryByText("R-000202")).toBeNull();
+});
+
+it("sin sesión, el login conserva la reservación a resaltar", async () => {
+  vi.mocked(listarMisReservaciones).mockResolvedValue({
+    error: "Tu sesión expiró.",
+    sinSesion: true,
+  });
+  render(<MisReservacionesView destacada="R-000046" />);
+  expect(
+    await screen.findByRole("link", { name: "Iniciar sesión" }),
+  ).toHaveAttribute(
+    "href",
+    "/login?next=%2Fperfil%2Freservaciones%3Freservacion%3DR-000046",
+  );
+});
