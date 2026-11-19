@@ -1,13 +1,15 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { consultarPago, procesarPago } from "@/app/actions/pagos";
+import { consultarPago, consultarPagoPedido, procesarPago } from "@/app/actions/pagos";
+import { obtenerPedido } from "@/app/actions/pedidos";
 import { DescargarComprobante } from "@/components/pagos/descargar-comprobante";
 import { PagoPedido } from "@/components/pagos/pago-pedido";
 import { useState } from "react";
 import type { PedidoSeguimiento } from "@/lib/seguimiento";
 import type { ResultadoPago } from "@/lib/pagos";
 
-vi.mock("@/app/actions/pagos", () => ({ consultarPago: vi.fn(), procesarPago: vi.fn() }));
+vi.mock("@/app/actions/pagos", () => ({ consultarPago: vi.fn(), consultarPagoPedido: vi.fn(), procesarPago: vi.fn() }));
+vi.mock("@/app/actions/pedidos", () => ({ obtenerPedido: vi.fn() }));
 
 const pedido = {
   pedidoId: 87,
@@ -19,7 +21,7 @@ function resultado(estado: ResultadoPago["estado"], comprobanteId: number | null
   return { estado, comprobanteId, transaccionId: "simulada-1", pagoId: 31, ticketId: 87 };
 }
 
-const mesa = () => render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO" pedido={pedido} />);
+const mesa = () => render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO" pedido={pedido} pagoInicial={{ ok: true, datos: null }} />);
 
 function completarTarjeta() {
   fireEvent.change(screen.getByLabelText("Número de tarjeta ficticia"), { target: { value: "4242424242424242" } });
@@ -54,6 +56,90 @@ afterEach(() => {
 });
 
 describe("PagoPedido", () => {
+  it("recupera un pago de otro mesero y descarga el comprobante en una nueva visita sin almacenamiento", async () => {
+    vi.useFakeTimers();
+    vi.mocked(consultarPago).mockResolvedValue({ ok: true, datos: resultado("CONFIRMADO", 25) });
+    const primera = render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO"
+      pedido={pedido} pagoInicial={{ ok: true, datos: resultado("PENDIENTE") }} />);
+    expect(screen.queryByLabelText("Monto recibido")).not.toBeInTheDocument();
+    await avanzar();
+    expect(consultarPago).toHaveBeenCalledWith("simulada-1");
+    expect(screen.getByRole("button", { name: "Descargar comprobante PDF" })).toBeVisible();
+    primera.unmount();
+    expect(sessionStorage.length).toBe(0);
+    render(<PagoPedido tipo="MESA" usuarioId="otro" estadoPedido="CERRADO"
+      pedido={pedido} pagoInicial={{ ok: true, datos: resultado("CONFIRMADO", 25) }} />);
+    expect(screen.getByRole("button", { name: "Descargar comprobante PDF" })).toBeVisible();
+    expect(procesarPago).not.toHaveBeenCalled();
+  });
+
+  it("al recibir 409 recupera el pago pendiente y bloquea un segundo cobro", async () => {
+    vi.mocked(procesarPago).mockResolvedValue({ ok: false, estado: 409, error: "Conflicto" });
+    vi.mocked(consultarPagoPedido).mockResolvedValue({
+      ok: true, datos: { ...resultado("PENDIENTE"), pedidoId: 87, metodo: "TARJETA" },
+    });
+    vi.mocked(obtenerPedido).mockResolvedValue({
+      ok: true, datos: { ...pedido, estado: "ENTREGADO", mesaId: 1, numero: null, creadoEn: "" },
+    });
+    mesa();
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByText("Pago pendiente")).toBeVisible();
+    expect(consultarPagoPedido).toHaveBeenCalledWith(87);
+    expect(obtenerPedido).toHaveBeenCalledWith(87);
+    expect(screen.queryByLabelText("Monto recibido")).not.toBeInTheDocument();
+    expect(procesarPago).toHaveBeenCalledOnce();
+  });
+
+  it("al recibir 409 sin pago bloqueante actualiza el total y permite corregir con una clave nueva", async () => {
+    vi.mocked(procesarPago).mockResolvedValueOnce({ ok: false, estado: 409, error: "Conflicto" })
+      .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO", 24) });
+    vi.mocked(consultarPagoPedido).mockResolvedValue({ ok: true, datos: null });
+    vi.mocked(obtenerPedido).mockResolvedValue({
+      ok: true, datos: { ...pedido, total: 19, estado: "ENTREGADO", mesaId: 1, numero: null, creadoEn: "" },
+    });
+    mesa();
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByText("Total $19.00")).toBeVisible();
+    expect(screen.getByLabelText("Monto recibido")).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByText("Pago confirmado")).toBeVisible();
+    const [primero, segundo] = vi.mocked(procesarPago).mock.calls;
+    expect(segundo[0].solicitudId).not.toBe(primero[0].solicitudId);
+    expect(segundo[0].ticket.total).toBe(19);
+  });
+
+  it("impide cobrar al expirar la sesión durante la consulta inicial", () => {
+    render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO" pedido={pedido}
+      pagoInicial={{ ok: false, sinSesion: true, error: "Tu sesión expiró" }} />);
+    expect(screen.getByRole("link", { name: "Iniciar sesión" })).toHaveAttribute("href", "/login");
+    expect(screen.queryByRole("button", { name: "Confirmar pago" })).not.toBeInTheDocument();
+  });
+
+  it("recupera el comprobante ante 409 y abre el siguiente pedido sin ese resultado", async () => {
+    vi.mocked(procesarPago).mockResolvedValue({ ok: false, estado: 409, error: "Conflicto" });
+    vi.mocked(consultarPagoPedido).mockResolvedValue({
+      ok: true, datos: { ...resultado("CONFIRMADO", 25), pedidoId: 87, metodo: "EFECTIVO" },
+    });
+    vi.mocked(obtenerPedido).mockResolvedValue({
+      ok: true, datos: { ...pedido, estado: "CERRADO", mesaId: 1, numero: null, creadoEn: "" },
+    });
+    const vista = mesa();
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByRole("button", { name: "Descargar comprobante PDF" })).toBeVisible();
+    vista.rerender(<PagoPedido key={88} tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO"
+      pedido={{ ...pedido, pedidoId: 88 }} pagoInicial={{ ok: true, datos: null }} />);
+    expect(screen.queryByRole("button", { name: "Descargar comprobante PDF" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Monto recibido")).toHaveValue("");
+  });
+
+  it.each(["RECHAZADO", "REEMBOLSADO"] as const)("habilita un nuevo cobro solo si %s admite otro intento", (estado) => {
+    render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="ENTREGADO" pedido={pedido}
+      pagoInicial={{ ok: true, datos: resultado(estado) }} />);
+    expect(Boolean(screen.queryByLabelText("Monto recibido"))).toBe(estado === "RECHAZADO");
+  });
   it("permite editar el importe con hasta dos decimales y conserva el prefijo visual", () => {
     mesa();
     const monto = screen.getByRole("textbox", { name: "Monto recibido" });
@@ -132,7 +218,7 @@ describe("PagoPedido", () => {
       solicitudId: expect.any(String), ticket: expect.any(Object),
       metodo: "TARJETA", marca: "VISA", ultimosCuatro: "4242",
     });
-    const guardado = sessionStorage.getItem("los-burle:pago:MESA:mesero:87");
+    const guardado = sessionStorage.getItem("los-burle:pago:MESA:mesero:87") ?? "";
     for (const dato of ["4242424242424242", "4242 4242 4242 4242", "Ana Demo", "12/30", '"codigo"']) {
       expect(guardado).not.toContain(dato);
     }

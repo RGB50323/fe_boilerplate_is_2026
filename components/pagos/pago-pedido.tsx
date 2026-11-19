@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
-import { consultarPago, procesarPago } from "@/app/actions/pagos";
+import { consultarPago, consultarPagoPedido, procesarPago } from "@/app/actions/pagos";
+import { obtenerPedido } from "@/app/actions/pedidos";
 import { Button } from "@/components/ui/button";
 import { DescargarComprobante } from "@/components/pagos/descargar-comprobante";
 import { TarjetaSimulada, leerTarjetaSimulada } from "@/components/pagos/tarjeta-simulada";
-import type { PedidoSeguimiento } from "@/lib/seguimiento";
+import { subtotalItem, type PedidoSeguimiento } from "@/lib/seguimiento";
+import type { PedidoDetalle } from "@/lib/pedidos";
 import { formatoPrecio } from "@/lib/menu";
 import { calcularCambio, construirTicket, type MetodoPago, type PedidoParaPago, type ResultadoPago, type SolicitudPago } from "@/lib/pagos";
 import type { Resultado } from "@/lib/api";
@@ -16,7 +18,7 @@ type Props = {
   pedido: PedidoParaPago;
   estadoPedido: string;
 } & (
-  | { tipo: "MESA"; usuarioId: string }
+  | { tipo: "MESA"; usuarioId: string; pagoInicial: Resultado<ResultadoPago | null> }
   | {
       tipo: "LLEVAR";
       pago: string | null;
@@ -41,14 +43,23 @@ const errorRed = "No pudimos completar la operación. Intenta de nuevo.";
 
 function leerOperacion(valor: string | null): Operacion | null {
   try {
-    return valor ? JSON.parse(valor) as Operacion : null;
+    if (!valor) return null;
+    const guardada = JSON.parse(valor) as Operacion;
+    return guardada?.solicitud && !guardada.resultado ? { solicitud: guardada.solicitud } : null;
   } catch {
     return null;
   }
 }
 
 export function PagoPedido(props: Props) {
-  const { pedido, estadoPedido, tipo } = props;
+  const { tipo } = props;
+  const [pedidoActual, setPedidoActual] = useState<PedidoDetalle>();
+  const [pagoActual, setPagoActual] = useState<Resultado<ResultadoPago | null>>();
+  const [reconciliacionPendiente, setReconciliacionPendiente] = useState(false);
+  const pedido = pedidoActual ?? props.pedido;
+  const estadoPedido = pedidoActual?.estado ?? props.estadoPedido;
+  const consultaMesa = tipo === "MESA" ? pagoActual ?? props.pagoInicial : undefined;
+  const falloInicial = consultaMesa && !consultaMesa.ok ? consultaMesa : null;
   const clave = `los-burle:pago:${tipo}:${tipo === "MESA" ? props.usuarioId : "cliente"}:${pedido.pedidoId}`;
   const valorGuardado = useSyncExternalStore(suscribir, () => {
     try {
@@ -63,32 +74,36 @@ export function PagoPedido(props: Props) {
   const [monto, setMonto] = useState("");
   const montoId = useId();
   const consultaEnCurso = useRef(false);
+  const conflicto = useRef(false);
   const [ocupado, setOcupado] = useState(false);
   const bloqueo = useRef(false);
   const [error, setError] = useState("");
   const [sinSesion, setSinSesion] = useState(false);
 
   const operacion = local === undefined ? leerOperacion(valorGuardado) : local;
-  const resultado = operacion?.resultado;
+  const resultado = tipo === "MESA"
+    ? consultaMesa?.ok ? consultaMesa.datos : null
+    : local?.resultado;
   const pagoH05 = tipo === "LLEVAR" ? props.pago : null;
   const pagoFinalH05 = pagoH05 === "CONFIRMADO" || pagoH05 === "REEMBOLSADO";
   const estado = tipo === "MESA"
     ? resultado?.estado
     : pagoFinalH05 || local === undefined ? pagoH05 ?? resultado?.estado : resultado?.estado ?? pagoH05;
   const comprobanteId = (tipo === "LLEVAR" ? props.comprobanteId : null) ?? resultado?.comprobanteId;
-  const reintento = operacion && !resultado ? operacion.solicitud : null;
+  const reintento = operacion && !operacion.resultado && (!estado || (estado === "RECHAZADO" && local !== undefined))
+    ? operacion.solicitud : null;
   const metodoActual = reintento?.metodo ?? metodo;
   const recibido = reintento?.metodo === "EFECTIVO" ? reintento.montoRecibido : monto;
   const cambio = calcularCambio(recibido, pedido.total);
-  const admitePago = (tipo === "MESA" ? (estadoPedido === "ENTREGADO" || (estadoPedido === "CERRADO" && Boolean(reintento))) : estadoPedido === "PENDIENTE_PAGO")
+  const admitePago = !reconciliacionPendiente && (tipo === "MESA" ? consultaMesa?.ok && estadoPedido === "ENTREGADO" : estadoPedido === "PENDIENTE_PAGO")
     && (!estado || estado === "RECHAZADO");
   const transaccionId = resultado?.transaccionId;
-  const consultarPendiente = estado === "PENDIENTE" && (tipo === "LLEVAR" || Boolean(transaccionId));
+  const consultarPendiente = estado === "PENDIENTE" && !reconciliacionPendiente;
 
   function guardar(siguiente: Operacion | null) {
     setLocal(siguiente);
     try {
-      if (siguiente) sessionStorage.setItem(clave, JSON.stringify(siguiente));
+      if (siguiente && !siguiente.resultado) sessionStorage.setItem(clave, JSON.stringify({ solicitud: siguiente.solicitud }));
       else sessionStorage.removeItem(clave);
     } catch {
       // El reintento sigue disponible mientras el componente permanezca montado.
@@ -109,6 +124,45 @@ export function PagoPedido(props: Props) {
       bloqueo.current = false;
       setOcupado(false);
     }
+  }
+
+  async function reconciliar() {
+    setReconciliacionPendiente(true);
+    let permiteCorregir = false;
+    if (props.tipo === "MESA") {
+      const [detalle, pago] = await Promise.all([
+        obtenerPedido(pedido.pedidoId),
+        consultarPagoPedido(pedido.pedidoId),
+      ]);
+      setPagoActual(pago);
+      const fallo = !detalle.ok ? detalle : !pago.ok ? pago : null;
+      if (fallo) {
+        setError(fallo.error);
+        setSinSesion(Boolean(fallo.sinSesion));
+        return;
+      }
+      if (detalle.ok && pago.ok) {
+        setPedidoActual(detalle.datos);
+        permiteCorregir = detalle.datos.estado === "ENTREGADO"
+          && (!pago.datos || pago.datos.estado === "RECHAZADO");
+      }
+    } else {
+      const seguimiento = await props.actualizarPago();
+      if (!seguimiento.ok) {
+        setError(seguimiento.error);
+        setSinSesion(Boolean(seguimiento.sinSesion));
+        return;
+      }
+      props.onSeguimiento(seguimiento.datos);
+      permiteCorregir = seguimiento.datos.estado === "PENDIENTE_PAGO"
+        && (!seguimiento.datos.pago || seguimiento.datos.pago === "RECHAZADO");
+    }
+    if (conflicto.current) {
+      guardar(null);
+      conflicto.current = false;
+      if (permiteCorregir) setError("Revisa el pedido actualizado antes de volver a cobrar.");
+    }
+    setReconciliacionPendiente(false);
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -138,12 +192,20 @@ export function PagoPedido(props: Props) {
       guardar({ solicitud });
       const respuesta = await procesarPago(solicitud);
       if (!respuesta.ok) {
+        if (respuesta.estado === 409) {
+          conflicto.current = true;
+          await reconciliar();
+          return;
+        }
         if (respuesta.estado === 400 || respuesta.estado === 404) guardar(null);
         setError(respuesta.error);
         setSinSesion(Boolean(respuesta.sinSesion));
         return;
       }
-      guardar({ solicitud, resultado: respuesta.datos });
+      if (tipo === "MESA") {
+        setPagoActual(respuesta);
+        guardar(null);
+      } else guardar({ solicitud, resultado: respuesta.datos });
     });
   }
 
@@ -167,10 +229,10 @@ export function PagoPedido(props: Props) {
           }
         }
         registrarConsulta(respuesta);
-      } else if (operacion && transaccionId) {
-        const respuesta = await consultarPago(transaccionId);
+      } else {
+        const respuesta = transaccionId ? await consultarPago(transaccionId) : await consultarPagoPedido(pedido.pedidoId);
         if (!vigente()) return;
-        if (respuesta.ok) guardar({ solicitud: operacion.solicitud, resultado: respuesta.datos });
+        if (respuesta.ok) setPagoActual(respuesta);
         registrarConsulta(respuesta);
       }
     } catch {
@@ -219,13 +281,27 @@ export function PagoPedido(props: Props) {
     };
   }, [consultarPendiente, transaccionId, pedido.pedidoId]);
 
-  if (tipo === "LLEVAR" && !admitePago && !estado && !comprobanteId) return null;
+  if (tipo === "LLEVAR" && !admitePago && !estado && !comprobanteId && !reconciliacionPendiente) return null;
 
   return (
+    <>
+    {tipo === "MESA" && (
+      <section aria-label="Detalle del pedido" className="rounded-2xl border border-zinc-800 bg-[#18181b] p-6 sm:p-8">
+        <ul className="grid gap-4">
+          {pedido.items.map((item) => (
+            <li key={item.itemId} className="flex justify-between gap-4">
+              <span>{item.cantidad} × {item.nombre}</span>
+              <span className="tabular-nums">{formatoPrecio(subtotalItem(item))}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-6 border-t border-zinc-800 pt-4 text-xl font-semibold">Total {formatoPrecio(pedido.total)}</p>
+      </section>
+    )}
     <section aria-label="Pago del pedido" className="grid gap-4 rounded-2xl border border-zinc-800 bg-[#18181b] p-6 sm:p-8">
       <h2 className="text-xl font-semibold">Pago del pedido</h2>
       {estado && estados[estado] && <p aria-live="polite" className="text-orange-200">{estados[estado]}</p>}
-      {tipo === "MESA" && !estado && !admitePago && (
+      {tipo === "MESA" && consultaMesa?.ok && !reconciliacionPendiente && !estado && !admitePago && (
         <p className="text-zinc-300">{estadoPedido === "CERRADO" ? "Este pedido ya está cerrado." : "El pedido debe estar entregado para cobrarlo."}</p>
       )}
       {admitePago && !mostrar && !reintento && (
@@ -289,12 +365,16 @@ export function PagoPedido(props: Props) {
       {tipo === "MESA" && estado === "CONFIRMADO" && (
         <Link href="/menu" className="text-orange-300 underline">Volver al menú principal</Link>
       )}
-      {error && (
+      {(falloInicial || reconciliacionPendiente) && (
+        <Button onClick={() => ejecutar(reconciliar)} disabled={ocupado}>Actualizar estado del cobro</Button>
+      )}
+      {(error || falloInicial) && (
         <div role="alert" className="text-sm text-red-300">
-          {error}
-          {sinSesion && <Link href="/login" className="ml-2 underline">Iniciar sesión</Link>}
+          {error || falloInicial?.error}
+          {(sinSesion || falloInicial?.sinSesion) && <Link href="/login" className="ml-2 underline">Iniciar sesión</Link>}
         </div>
       )}
     </section>
+    </>
   );
 }

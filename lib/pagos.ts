@@ -32,6 +32,12 @@ export type ResultadoPago = {
   transaccionId: string | null;
 };
 
+export type PagoPorPedido = ResultadoPago & {
+  pagoId: number;
+  pedidoId: number;
+  metodo: string | null;
+};
+
 export function calcularCambio(recibido: string, total: number): number | null {
   if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(recibido)) return null;
   return (Math.round(Number(recibido) * 100) - Math.round(total * 100)) / 100;
