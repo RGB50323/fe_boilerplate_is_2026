@@ -30,7 +30,7 @@ describe("enlacesDelHeader", () => {
   it("gerente: sin Reservar mesa ni Mis pedidos", () => {
     expect(
       textos({ autenticado: true, esGerente: true, esMesero: false }),
-    ).toEqual(["Mi perfil", "Inventario", "Gestionar platillos"]);
+    ).toEqual(["Mi perfil", "Calificaciones", "Inventario", "Gestionar platillos"]);
   });
 });
 

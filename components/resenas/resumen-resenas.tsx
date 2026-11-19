@@ -5,10 +5,12 @@ export function ResumenResenas({
   promedio,
   total,
   distribucion,
+  nota = "Solo pueden reseñar clientes que pidieron y pagaron este platillo.",
 }: {
   promedio: number;
   total: number;
   distribucion: Distribucion;
+  nota?: string;
 }) {
   return (
     <div className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-2">
@@ -50,9 +52,7 @@ export function ResumenResenas({
         })}
       </ul>
 
-      <p className="col-span-2 mt-3 text-xs text-zinc-500">
-        Solo pueden reseñar clientes que pidieron y pagaron este platillo.
-      </p>
+      <p className="col-span-2 mt-3 text-xs text-zinc-500">{nota}</p>
     </div>
   );
 }

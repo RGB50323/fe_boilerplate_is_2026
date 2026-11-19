@@ -18,7 +18,12 @@ export default function InventarioLayout({ children }: { children: ReactNode }) 
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4">
           <div className="flex items-baseline gap-4">
-            <p className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</p>
+            <Link
+              href="/menu"
+              className="text-2xl text-[#FF7A1A] hover:text-orange-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:text-3xl"
+            >
+              Los Burle
+            </Link>
             <p className="text-lg text-zinc-400 sm:text-2xl">Panel de gerente</p>
           </div>
           <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
