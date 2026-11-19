@@ -27,6 +27,7 @@ export function OcupacionView({ token, socketUrl, sucursalId }: Props) {
   const router = useRouter();
   const [fecha, setFecha] = useState(() => fechaHoyElSalvador());
   const [fechaConsultada, setFechaConsultada] = useState(() => fechaHoyElSalvador());
+  const [numeroConsulta, setNumeroConsulta] = useState(0);
   const [ocupacion, setOcupacion] = useState<OcupacionProyectada>();
   const [error, setError] = useState<string>();
   const [errorFecha, setErrorFecha] = useState<string>();
@@ -35,6 +36,7 @@ export function OcupacionView({ token, socketUrl, sucursalId }: Props) {
 
   const fechaConsultadaRef = useRef(fechaConsultada);
   fechaConsultadaRef.current = fechaConsultada;
+  const solicitudActualRef = useRef(0);
 
   // Sesión vencida: redirige al login
   useEffect(() => {
@@ -43,9 +45,12 @@ export function OcupacionView({ token, socketUrl, sucursalId }: Props) {
 
   const cargarOcupacion = useCallback(
     async (fechaAConsultar: string, mostrarSpinner = true) => {
+      const solicitud = ++solicitudActualRef.current;
       if (mostrarSpinner) setCargando(true);
       try {
         const resultado = await consultarOcupacion(fechaAConsultar);
+        if (solicitud !== solicitudActualRef.current) return;
+
         if ("ocupacion" in resultado) {
           setOcupacion(resultado.ocupacion);
           setError(undefined);
@@ -56,18 +61,20 @@ export function OcupacionView({ token, socketUrl, sucursalId }: Props) {
           setError(resultado.error);
         }
       } catch {
-        setError("No pudimos cargar la ocupación proyectada. Intenta de nuevo.");
+        if (solicitud === solicitudActualRef.current) {
+          setError("No pudimos cargar la ocupación proyectada. Intenta de nuevo.");
+        }
       } finally {
-        if (mostrarSpinner) setCargando(false);
+        if (solicitud === solicitudActualRef.current) setCargando(false);
       }
     },
     [],
   );
 
-  // Carga inicial y al cambiar fecha consultada
+  // Carga inicial y cada consulta, incluso si se repite la misma fecha
   useEffect(() => {
     void cargarOcupacion(fechaConsultada);
-  }, [fechaConsultada, cargarOcupacion]);
+  }, [fechaConsultada, numeroConsulta, cargarOcupacion]);
 
   // WebSocket para actualización en tiempo real ante creación, edición o cancelación (CA5)
   useEffect(() => {
@@ -113,6 +120,7 @@ export function OcupacionView({ token, socketUrl, sucursalId }: Props) {
     }
     setErrorFecha(undefined);
     setFechaConsultada(fecha);
+    setNumeroConsulta((numero) => numero + 1);
   }
 
   return (

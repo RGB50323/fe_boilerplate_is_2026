@@ -197,6 +197,107 @@ describe("OcupacionView (H13)", () => {
     expect(consultarOcupacion).toHaveBeenLastCalledWith("2026-11-25");
   });
 
+  it("vuelve a consultar aunque la fecha seleccionada no cambie", async () => {
+    render(
+      <OcupacionView
+        token="token-gerente"
+        socketUrl="http://localhost:3000/ocupacion"
+        sucursalId={1}
+      />,
+    );
+
+    await screen.findByText("25 %");
+    const fechaInicial = vi.mocked(consultarOcupacion).mock.calls[0][0];
+
+    fireEvent.click(screen.getByRole("button", { name: "Consultar" }));
+
+    await act(async () => undefined);
+    expect(consultarOcupacion).toHaveBeenCalledTimes(2);
+    expect(consultarOcupacion).toHaveBeenLastCalledWith(fechaInicial);
+  });
+
+  it("permite reintentar la misma fecha después de un error", async () => {
+    vi.mocked(consultarOcupacion).mockResolvedValueOnce({
+      error: "No pudimos cargar la ocupación proyectada. Intenta de nuevo.",
+    });
+
+    render(
+      <OcupacionView
+        token="token-gerente"
+        socketUrl="http://localhost:3000/ocupacion"
+        sucursalId={1}
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No pudimos cargar la ocupación proyectada.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Consultar" }));
+
+    expect(await screen.findByText("25 %")).toBeVisible();
+    expect(consultarOcupacion).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignora la respuesta de una solicitud anterior si llega fuera de orden", async () => {
+    let resolverAnterior!: (resultado: { ocupacion: typeof ocupacion }) => void;
+    let resolverNueva!: (resultado: { ocupacion: typeof ocupacion }) => void;
+    vi.mocked(consultarOcupacion)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolverAnterior = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolverNueva = resolve;
+          }),
+      );
+
+    render(
+      <OcupacionView
+        token="token-gerente"
+        socketUrl="http://localhost:3000/ocupacion"
+        sucursalId={1}
+      />,
+    );
+
+    expect(consultarOcupacion).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      eventosSocket["ocupacion:actualizada"]?.({ sucursalId: 1 });
+    });
+
+    expect(consultarOcupacion).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolverNueva({
+        ocupacion: {
+          ...ocupacion,
+          bloques: [
+            {
+              horaInicio: "08:00",
+              horaFin: "09:00",
+              mesasReservadas: 4,
+              mesasDisponibles: 4,
+              porcentajeOcupacion: 50,
+            },
+          ],
+        },
+      });
+    });
+    expect(await screen.findByText("50 %")).toBeVisible();
+
+    await act(async () => {
+      resolverAnterior({ ocupacion });
+    });
+
+    expect(screen.getByText("50 %")).toBeVisible();
+    expect(screen.queryByText("25 %")).not.toBeInTheDocument();
+  });
+
   it("sin sesión redirige al login", async () => {
     vi.mocked(consultarOcupacion).mockResolvedValue({ sinSesion: true });
 
