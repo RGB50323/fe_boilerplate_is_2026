@@ -1,8 +1,15 @@
 "use server";
 
 import { llamar } from "@/lib/api";
+import type { Pagina } from "@/lib/paginacion";
 import {
   MAX_COMENTARIO,
+  MOTIVOS,
+  YA_OCULTA,
+  esResenaModeracion,
+  type EstadoResena,
+  type MotivoOcultacion,
+  type ResenaModeracion,
   SIN_PERMISO_SECCION,
   errorRango,
   esReporteCalificaciones,
@@ -173,4 +180,85 @@ export async function consultarReporteCalificaciones(
     return { error: "No pudimos cargar el reporte. Intenta de nuevo." };
   }
   return { reporte: resultado.datos };
+}
+
+export type ModeracionResultado =
+  | { pagina: Pagina<ResenaModeracion> }
+  | { sinSesion: true }
+  | { error: string };
+
+export async function listarModeracion(
+  pagina: number,
+  estado?: EstadoResena,
+): Promise<ModeracionResultado> {
+  if (!Number.isInteger(pagina) || pagina < 1) {
+    return { error: "Página inválida." };
+  }
+  const query = new URLSearchParams({ pagina: String(pagina) });
+  if (estado) query.set("estado", estado);
+  const resultado = await llamar<unknown>(`resenas/moderacion?${query}`);
+  if (!resultado.ok) {
+    if (resultado.sinSesion) return { sinSesion: true };
+    return {
+      error:
+        resultado.error === "No tienes permiso para realizar esta acción."
+          ? SIN_PERMISO_SECCION
+          : "No pudimos cargar las reseñas. Intenta de nuevo.",
+    };
+  }
+  const d = resultado.datos as Partial<Pagina<unknown>> | null;
+  if (
+    !d ||
+    !Array.isArray(d.datos) ||
+    !d.datos.every(esResenaModeracion) ||
+    !Number.isInteger(d.pagina) ||
+    !Number.isInteger(d.totalPaginas) ||
+    !Number.isInteger(d.total)
+  ) {
+    console.error("Respuesta de moderación de reseñas inválida.");
+    return { error: "No pudimos cargar las reseñas. Intenta de nuevo." };
+  }
+  return { pagina: d as Pagina<ResenaModeracion> };
+}
+
+export type OcultarResultado =
+  | { ok: true; resena: ResenaModeracion }
+  | { ok: false; error: string; sinSesion?: boolean; yaOculta?: boolean };
+
+export async function ocultarResena(
+  id: number,
+  motivo: MotivoOcultacion,
+): Promise<OcultarResultado> {
+  if (!Number.isInteger(id) || id < 1) {
+    return { ok: false, error: "Reseña inválida." };
+  }
+  if (!MOTIVOS.some((m) => m.valor === motivo)) {
+    return { ok: false, error: "Elige un motivo." };
+  }
+  const resultado = await llamar<unknown>(`resenas/${id}/ocultar`, {
+    metodo: "PATCH",
+    cuerpo: { motivo },
+    mensajes: {
+      400: "Elige un motivo.",
+      404: "Esta reseña ya no existe.",
+      409: YA_OCULTA,
+    },
+    detallarErrores: true,
+  });
+  if (!resultado.ok) {
+    return {
+      ok: false,
+      error: resultado.error,
+      sinSesion: resultado.sinSesion,
+      yaOculta: resultado.estado === 409,
+    };
+  }
+  if (!esResenaModeracion(resultado.datos)) {
+    console.error("Respuesta de ocultar reseña inválida.");
+    return {
+      ok: false,
+      error: "No pudimos ocultar la reseña. Intenta de nuevo.",
+    };
+  }
+  return { ok: true, resena: resultado.datos };
 }

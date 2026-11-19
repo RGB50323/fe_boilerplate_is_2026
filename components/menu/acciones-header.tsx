@@ -26,6 +26,7 @@ export function enlacesDelHeader({
   }
   if (esGerente) {
     enlaces.push({ href: "/admin/calificaciones", texto: "Calificaciones" });
+    enlaces.push({ href: "/admin/resenas", texto: "Moderar reseñas" });
     enlaces.push({
       href: "/admin/platillos",
       texto: "Gestionar platillos",
