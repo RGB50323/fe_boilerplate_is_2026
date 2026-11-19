@@ -242,6 +242,55 @@ describe("nuevo insumo (FE-14.1)", () => {
     expect(within(dialogo()).getByRole("button", { name: "Guardar" })).toBeEnabled();
   });
 
+  it("con una búsqueda activa, el insumo nuevo que no coincide no aparece hasta limpiar el filtro", async () => {
+    await montar();
+    mocks.listarInsumos.mockImplementation(async (q?: string) => ({
+      insumos: q ? INSUMOS.filter((i) => i.nombre.toLowerCase().includes(q.toLowerCase())) : INSUMOS,
+    }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar insumo por nombre" }), {
+      target: { value: "queso" },
+    });
+    await waitFor(() => expect(filas()).toEqual(["Queso con loroco"]));
+
+    const aceite: Insumo = { id: 9, nombre: "Aceite", unidad: "l", cantidad: 0, minimo: 5, estado: "BAJO" };
+    const conAceite = [...INSUMOS, aceite];
+    mocks.listarInsumos.mockImplementation(async (q?: string) => ({
+      insumos: q ? conAceite.filter((i) => i.nombre.toLowerCase().includes(q.toLowerCase())) : conAceite,
+    }));
+    mocks.crearInsumo.mockResolvedValue({ insumo: aceite });
+    fireEvent.click(screen.getByRole("button", { name: "Nuevo insumo" }));
+    await screen.findByRole("dialog", { name: "Nuevo insumo" });
+    llenar();
+    fireEvent.click(within(dialogo()).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(mocks.listarInsumos).toHaveBeenLastCalledWith("queso"));
+    expect(screen.getByText("Insumo guardado correctamente")).toBeInTheDocument();
+    expect(filas()).toEqual(["Queso con loroco"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+    await waitFor(() => expect(filas()).toEqual(["Masa de maíz", "Aceite", "Queso con loroco", "Huevos"]));
+  });
+
+  it("con una búsqueda que sí coincide, el insumo nuevo aparece en la tabla", async () => {
+    await montar();
+    mocks.listarInsumos.mockResolvedValue({ insumos: [] });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar insumo por nombre" }), {
+      target: { value: "acei" },
+    });
+    await screen.findByText("Sin resultados");
+
+    const aceite: Insumo = { id: 9, nombre: "Aceite", unidad: "l", cantidad: 0, minimo: 5, estado: "BAJO" };
+    mocks.listarInsumos.mockResolvedValue({ insumos: [aceite] });
+    mocks.crearInsumo.mockResolvedValue({ insumo: aceite });
+    fireEvent.click(screen.getByRole("button", { name: "Nuevo insumo" }));
+    await screen.findByRole("dialog", { name: "Nuevo insumo" });
+    llenar();
+    fireEvent.click(within(dialogo()).getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(filas()).toEqual(["Aceite"]));
+  });
+
   it("409: avisa que ya existe un insumo con ese nombre y no lo agrega", async () => {
     mocks.crearInsumo.mockResolvedValue({ errores: { nombre: "Ya existe un insumo con ese nombre en la sucursal" } });
     await abrirFormulario();
@@ -361,6 +410,37 @@ describe("registrar movimiento (FE-14.2)", () => {
     expect(
       await within(dialogo()).findByText("La entrada supera la cantidad máxima permitida."),
     ).toBeInTheDocument();
+  });
+
+  it("422: consulta la existencia vigente si otro usuario la cambió y actualiza mensaje y fila", async () => {
+    mocks.registrarMovimiento.mockResolvedValue({ limiteExcedido: true });
+    await abrirMovimiento();
+    mocks.listarInsumos.mockResolvedValue({ insumos: [{ ...QUESO, cantidad: 3, estado: "BAJO" }] });
+    llenar("5");
+    registrar();
+
+    expect(
+      await within(dialogo()).findByText("La salida supera la existencia actual (3 lb)."),
+    ).toBeInTheDocument();
+    expect(mocks.listarInsumos).toHaveBeenLastCalledWith("Queso con loroco");
+    expect(screen.getByText("Queso con loroco · existencia actual 3.00 lb")).toBeInTheDocument();
+    expect(celdas("Queso con loroco")[1]).toHaveTextContent("3.00");
+    expect(celdas("Queso con loroco")[3]).toHaveTextContent("Bajo");
+    expect(filas()).toEqual(["Masa de maíz", "Queso con loroco", "Huevos"]);
+    expect(within(dialogo()).getByLabelText(/Cantidad/)).toHaveValue("5");
+  });
+
+  it("422: si no se puede consultar la existencia, usa la cantidad conocida", async () => {
+    mocks.registrarMovimiento.mockResolvedValue({ limiteExcedido: true });
+    await abrirMovimiento();
+    mocks.listarInsumos.mockResolvedValue({ error: "No pudimos cargar el inventario" });
+    llenar("20");
+    registrar();
+
+    expect(
+      await within(dialogo()).findByText("La salida supera la existencia actual (12.5 lb)."),
+    ).toBeInTheDocument();
+    expect(celdas("Queso con loroco")[1]).toHaveTextContent("12.50");
   });
 
   it("400: pide una cantidad mayor a 0", async () => {
