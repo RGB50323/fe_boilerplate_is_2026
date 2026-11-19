@@ -130,3 +130,55 @@ export function esReporteCalificaciones(
 export function errorRango(desde: string, hasta: string): string | null {
   return desde && hasta && hasta < desde ? RANGO_INVALIDO : null;
 }
+
+// H24: moderación de reseñas de la sucursal
+export type EstadoResena = "VISIBLE" | "OCULTA";
+export type MotivoOcultacion = "OFENSIVO" | "SPAM" | "NO_RELACIONADO";
+
+export const MOTIVOS: { valor: MotivoOcultacion; texto: string }[] = [
+  { valor: "OFENSIVO", texto: "Ofensivo" },
+  { valor: "SPAM", texto: "Spam" },
+  { valor: "NO_RELACIONADO", texto: "No relacionado" },
+];
+
+export const textoMotivo = (motivo: MotivoOcultacion) =>
+  MOTIVOS.find((m) => m.valor === motivo)?.texto ?? motivo;
+
+export const RESENA_OCULTADA = "Reseña ocultada";
+export const YA_OCULTA = "Esta reseña ya estaba oculta.";
+
+export type ResenaModeracion = {
+  id: number;
+  platillo: string;
+  estrellas: number;
+  comentario: string | null;
+  fecha: string;
+  cliente: string;
+  estado: EstadoResena;
+  ocultacion: {
+    por: string;
+    fecha: string;
+    hora: string;
+    motivo: MotivoOcultacion;
+  } | null;
+};
+
+export function esResenaModeracion(valor: unknown): valor is ResenaModeracion {
+  if (!valor || typeof valor !== "object") return false;
+  const r = valor as Record<string, unknown>;
+  const o = r.ocultacion as Record<string, unknown> | null;
+  return (
+    Number.isInteger(r.id) &&
+    typeof r.platillo === "string" &&
+    Number.isInteger(r.estrellas) &&
+    (r.comentario === null || typeof r.comentario === "string") &&
+    typeof r.fecha === "string" &&
+    (r.estado === "VISIBLE" || r.estado === "OCULTA") &&
+    (o === null ||
+      (typeof o === "object" &&
+        typeof o.por === "string" &&
+        typeof o.fecha === "string" &&
+        typeof o.hora === "string" &&
+        typeof o.motivo === "string"))
+  );
+}
