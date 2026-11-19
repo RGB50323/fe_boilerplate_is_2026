@@ -25,6 +25,7 @@ export function enlacesDelHeader({
     enlaces.push({ href: "/perfil/reservaciones", texto: "Mi perfil" });
   }
   if (esGerente) {
+    enlaces.push({ href: "/admin/calificaciones", texto: "Calificaciones" });
     enlaces.push({
       href: "/admin/platillos",
       texto: "Gestionar platillos",
