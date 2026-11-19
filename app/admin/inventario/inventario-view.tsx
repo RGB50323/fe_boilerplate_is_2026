@@ -47,6 +47,16 @@ async function pedir<T>(accion: () => Promise<T>, error: T, contexto: string): P
   }
 }
 
+async function existenciaVigente(insumo: Insumo): Promise<Insumo> {
+  const resultado = await pedir<InsumosResultado>(
+    () => listarInsumos(insumo.nombre),
+    { error: ERROR_CARGA },
+    "Error al consultar la existencia del insumo:",
+  );
+  if (!("insumos" in resultado)) return insumo;
+  return resultado.insumos.find((i) => i.id === insumo.id) ?? insumo;
+}
+
 export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) {
   const router = useRouter();
   const [carga, setCarga] = useState<Carga>("cargando");
@@ -61,6 +71,7 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
   const ultimaConsulta = useRef(0);
   const siguienteAviso = useRef(0);
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const consultaVigente = useRef("");
 
   const avisar = useCallback((texto: string, variante: Aviso["variante"]) => {
     setAviso({ id: ++siguienteAviso.current, texto, variante });
@@ -79,6 +90,7 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
         if (id !== ultimaConsulta.current) return;
         setBuscando(false);
         if ("insumos" in resultado) {
+          consultaVigente.current = texto;
           setInsumos(ordenarInsumos(resultado.insumos));
           setConsulta(texto);
           setCarga("listo");
@@ -126,7 +138,12 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
       "Error al crear el insumo:",
     );
     if ("insumo" in resultado) {
-      setInsumos((actuales) => agregarInsumo(actuales, resultado.insumo));
+      if (consultaVigente.current) {
+        setBuscando(true);
+        void cargar(consultaVigente.current);
+      } else {
+        setInsumos((actuales) => agregarInsumo(actuales, resultado.insumo));
+      }
       setCreando(false);
       avisar("Insumo guardado correctamente", "success");
       return undefined;
@@ -156,7 +173,14 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
       return undefined;
     }
     if ("limiteExcedido" in resultado) {
-      const mensaje = valores.tipo === "SALIDA" ? mensajeExcedeExistencia(insumo) : MENSAJE_MAXIMO;
+      const vigente = await existenciaVigente(insumo);
+      if (vigente !== insumo) {
+        setInsumos((actuales) =>
+          ordenarInsumos(actuales.map((i) => (i.id === vigente.id ? vigente : i))),
+        );
+        setAMover(vigente);
+      }
+      const mensaje = valores.tipo === "SALIDA" ? mensajeExcedeExistencia(vigente) : MENSAJE_MAXIMO;
       return { errores: { cantidad: mensaje } };
     }
     if ("sinSesion" in resultado) {
