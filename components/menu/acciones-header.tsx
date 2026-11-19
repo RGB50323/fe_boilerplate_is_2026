@@ -28,6 +28,7 @@ export function enlacesDelHeader({
     enlaces.push({ href: "/admin/ocupacion", texto: "Ocupación" });
     enlaces.push({ href: "/admin/calificaciones", texto: "Calificaciones" });
     enlaces.push({ href: "/admin/resenas", texto: "Moderar reseñas" });
+    enlaces.push({ href: "/admin/inventario", texto: "Inventario" });
     enlaces.push({
       href: "/admin/platillos",
       texto: "Gestionar platillos",
