@@ -1,0 +1,24 @@
+"use server";
+
+import { llamar } from "@/lib/api";
+import type { ResultadoPago, SolicitudPago } from "@/lib/pagos";
+
+export async function procesarPago(solicitud: SolicitudPago) {
+  return llamar<ResultadoPago & { pagoId: number; ticketId: number }>("pagos/procesar", {
+    metodo: "POST",
+    cuerpo: solicitud,
+    detallarErrores: true,
+    mensajes: {
+      400: "Revisa el importe, los datos del pago y el detalle del pedido.",
+      404: "El pedido ya no está disponible.",
+      409: "El pedido cambió o ya tiene un pago activo. Consulta su estado antes de intentar otro cobro.",
+      502: "La pasarela simulada no respondió correctamente. Reintenta la misma solicitud.",
+    },
+  });
+}
+
+export async function consultarPago(transaccionId: string) {
+  return llamar<ResultadoPago>(`pagos/transaccion/${encodeURIComponent(transaccionId)}`, {
+    mensajes: { 404: "No encontramos la transacción." },
+  });
+}
