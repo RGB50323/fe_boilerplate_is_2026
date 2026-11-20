@@ -56,6 +56,23 @@ afterEach(() => {
 });
 
 describe("PagoPedido", () => {
+  it.each(["", "cliente@example.test"])("cobra MESA con correo opcional %j y conserva la solicitud al reintentar", async (correo) => {
+    vi.mocked(procesarPago).mockResolvedValueOnce({ ok: false, error: "Sin conexión" })
+      .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO") });
+    mesa();
+    fireEvent.change(screen.getByLabelText(/Correo de lealtad/), { target: { value: correo } });
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    const reintentar = await screen.findByRole("button", { name: "Reintentar el mismo pago" });
+    const [solicitud] = vi.mocked(procesarPago).mock.calls[0];
+    if (correo) expect(solicitud.correoLealtad).toBe(correo);
+    else expect(solicitud).not.toHaveProperty("correoLealtad");
+    expect(screen.getByLabelText(/Correo de lealtad/)).toBeDisabled();
+    fireEvent.click(reintentar);
+    expect(await screen.findByText("Pago confirmado")).toBeInTheDocument();
+    expect(procesarPago).toHaveBeenNthCalledWith(2, solicitud);
+  });
+
   it("recupera un pago de otro mesero y descarga el comprobante en una nueva visita sin almacenamiento", async () => {
     vi.useFakeTimers();
     vi.mocked(consultarPago).mockResolvedValue({ ok: true, datos: resultado("CONFIRMADO", 25) });

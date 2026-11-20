@@ -18,12 +18,20 @@ export const ENLACES_GERENTE = [
   { href: "/admin/resenas", texto: "Moderar reseñas" },
   { href: "/admin/inventario", texto: "Inventario" },
   { href: "/admin/platillos", texto: "Platillos" },
+  { href: "/admin/beneficios", texto: "Beneficios" },
+  { href: "/admin/beneficios/canjes", texto: "Canje de puntos" },
   { href: "/cocina", texto: "Cocina" },
   { href: "/dashboard", texto: "Dashboard" },
   { href: "/menu", texto: "Ver menú" },
 ];
 
-export function PanelGerente({ children }: { children: ReactNode }) {
+export function PanelGerente({ children, esGerenteGeneral = false }: {
+  children: ReactNode;
+  esGerenteGeneral?: boolean;
+}) {
+  const enlaces = esGerenteGeneral
+    ? ENLACES_GERENTE.filter(({ href }) => ["/admin/beneficios", "/admin/beneficios/canjes", "/dashboard", "/menu"].includes(href))
+    : ENLACES_GERENTE;
   return (
     <div
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
@@ -41,14 +49,14 @@ export function PanelGerente({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {ENLACES_GERENTE.map((e) => (
+              {enlaces.map((e) => (
                 <Link key={e.href} href={e.href} className={ENLACE}>
                   {e.texto}
                 </Link>
               ))}
             </nav>
             <div className="flex items-center gap-3">
-              <ContadorAlertas />
+              {!esGerenteGeneral && <ContadorAlertas />}
               <CampanaNotificaciones enLinea />
             </div>
           </div>

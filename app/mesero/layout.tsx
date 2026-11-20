@@ -32,6 +32,12 @@ export default function MeseroLayout({ children }: { children: ReactNode }) {
               Registrar pedido
             </Link>
             <Link
+              href="/mesero/canjes"
+              className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+            >
+              Canje de puntos
+            </Link>
+            <Link
               href="/mesero/entregas"
               className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
             >

@@ -27,6 +27,7 @@ export function enlacesDelHeader({
   }
   if (autenticado && esCliente) {
     enlaces.push({ href: "/perfil/reservaciones", texto: "Mi perfil" });
+    enlaces.push({ href: "/perfil/beneficios", texto: "Mis beneficios" });
   }
   if (esGerente) {
     enlaces.push({ href: "/admin/ocupacion", texto: "Ocupación" });
@@ -41,6 +42,10 @@ export function enlacesDelHeader({
       destacado: true,
     });
   }
+  if (autenticado && (esGerente || esGerenteGeneral)) {
+    enlaces.push({ href: "/admin/beneficios", texto: "Administrar beneficios" });
+    enlaces.push({ href: "/admin/beneficios/canjes", texto: "Canje de puntos" });
+  }
   if (esMesero) {
     enlaces.push({ href: "/mesero/entregas", texto: "Por entregar" });
     enlaces.push({
@@ -48,6 +53,7 @@ export function enlacesDelHeader({
       texto: "Registrar pedido",
       destacado: true,
     });
+    enlaces.push({ href: "/mesero/canjes", texto: "Canje de puntos", destacado: true });
   }
   if (esCocina) {
     enlaces.push({ href: "/cocina", texto: "Tablero de cocina", destacado: true });
@@ -112,7 +118,7 @@ export function AccionesHeader({
     <>
       <nav
         aria-label="Navegación principal"
-        className="hidden items-center gap-5 md:flex"
+        className="hidden flex-wrap items-center justify-end gap-x-5 gap-y-2 xl:flex"
       >
         {enlaces.map((e) => (
           <Link
@@ -145,7 +151,7 @@ export function AccionesHeader({
       )}
 
       {enlaces.length > 0 && (
-        <div ref={contenedor} className="relative md:hidden">
+        <div ref={contenedor} className="relative xl:hidden">
           <button
             type="button"
             aria-label="Menú"

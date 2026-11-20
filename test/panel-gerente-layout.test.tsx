@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import PanelGerenteLayout from "@/app/admin/platillos/layout";
+import { PanelGerente } from "@/components/admin/panel-gerente";
 
 vi.mock("next/font/google", () => ({ Fraunces: () => ({ className: "" }) }));
 vi.mock("next/navigation", () => ({
@@ -34,8 +35,18 @@ it("la navegación lleva a todas las secciones del gerente", () => {
     ["Moderar reseñas", "/admin/resenas"],
     ["Inventario", "/admin/inventario"],
     ["Platillos", "/admin/platillos"],
+    ["Beneficios", "/admin/beneficios"],
+    ["Canje de puntos", "/admin/beneficios/canjes"],
     ["Cocina", "/cocina"],
     ["Dashboard", "/dashboard"],
     ["Ver menú", "/menu"],
   ]);
+});
+
+it("el panel de gerente general ofrece ambas funciones de lealtad", () => {
+  render(<PanelGerente esGerenteGeneral>contenido</PanelGerente>);
+  const nav = within(screen.getByRole("navigation", { name: "Panel de gerente" }));
+  expect(nav.getByRole("link", { name: "Beneficios" })).toHaveAttribute("href", "/admin/beneficios");
+  expect(nav.getByRole("link", { name: "Canje de puntos" })).toHaveAttribute("href", "/admin/beneficios/canjes");
+  expect(nav.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
 });
