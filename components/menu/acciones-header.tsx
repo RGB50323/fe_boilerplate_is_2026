@@ -10,18 +10,22 @@ export function enlacesDelHeader({
   autenticado,
   esGerente,
   esMesero,
+  esCocina = false,
+  esGerenteGeneral = false,
 }: {
   autenticado: boolean;
   esGerente: boolean;
   esMesero: boolean;
+  esCocina?: boolean;
+  esGerenteGeneral?: boolean;
 }): EnlaceHeader[] {
-  const esCliente = !esGerente && !esMesero;
+  const esCliente = !esGerente && !esMesero && !esCocina && !esGerenteGeneral;
   const enlaces: EnlaceHeader[] = [];
   if (esCliente) enlaces.push({ href: "/reservas", texto: "Reservar mesa" });
   if (autenticado && esCliente) {
     enlaces.push({ href: "/pedidos", texto: "Mis pedidos" });
   }
-  if (autenticado) {
+  if (autenticado && esCliente) {
     enlaces.push({ href: "/perfil/reservaciones", texto: "Mi perfil" });
   }
   if (esGerente) {
@@ -29,6 +33,8 @@ export function enlacesDelHeader({
     enlaces.push({ href: "/admin/calificaciones", texto: "Calificaciones" });
     enlaces.push({ href: "/admin/resenas", texto: "Moderar reseñas" });
     enlaces.push({ href: "/admin/inventario", texto: "Inventario" });
+    enlaces.push({ href: "/cocina", texto: "Cocina" });
+    enlaces.push({ href: "/dashboard", texto: "Dashboard" });
     enlaces.push({
       href: "/admin/platillos",
       texto: "Gestionar platillos",
@@ -43,6 +49,12 @@ export function enlacesDelHeader({
       destacado: true,
     });
   }
+  if (esCocina) {
+    enlaces.push({ href: "/cocina", texto: "Tablero de cocina", destacado: true });
+  }
+  if (esGerenteGeneral) {
+    enlaces.push({ href: "/dashboard", texto: "Dashboard", destacado: true });
+  }
   return enlaces;
 }
 
@@ -55,6 +67,8 @@ export function AccionesHeader({
   autenticado,
   esGerente,
   esMesero,
+  esCocina = false,
+  esGerenteGeneral = false,
   cerrandoSesion,
   onCerrarSesion,
   onIniciarSesion,
@@ -62,13 +76,21 @@ export function AccionesHeader({
   autenticado: boolean;
   esGerente: boolean;
   esMesero: boolean;
+  esCocina?: boolean;
+  esGerenteGeneral?: boolean;
   cerrandoSesion: boolean;
   onCerrarSesion: () => void;
   onIniciarSesion: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const contenedor = useRef<HTMLDivElement>(null);
-  const enlaces = enlacesDelHeader({ autenticado, esGerente, esMesero });
+  const enlaces = enlacesDelHeader({
+    autenticado,
+    esGerente,
+    esMesero,
+    esCocina,
+    esGerenteGeneral,
+  });
 
   useEffect(() => {
     if (!abierto) return;

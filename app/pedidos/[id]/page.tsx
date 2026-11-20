@@ -4,6 +4,7 @@ import { obtenerSeguimiento } from "@/app/actions/pedidos";
 import { MarcoPedidos } from "@/components/pedidos/marco-pedidos";
 import { SeguimientoPedido } from "@/components/pedidos/seguimiento-pedido";
 import { PEDIDO_NO_EXISTE } from "@/lib/seguimiento";
+import { soloClientes } from "@/lib/solo-clientes";
 
 export const metadata: Metadata = {
   title: "Seguimiento de tu pedido | Los Burle",
@@ -14,6 +15,8 @@ export default async function SeguimientoPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await soloClientes();
+
   const { id } = await params;
   const pedidoId = Number(id);
   const resultado =

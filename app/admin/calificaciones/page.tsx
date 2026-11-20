@@ -11,9 +11,10 @@ export const metadata: Metadata = {
 export default async function CalificacionesPage() {
   const usuario = await obtenerUsuarioActual();
   if (!usuario) redirect("/login");
+  if (usuario.rol !== "GERENTE") redirect("/menu");
 
   // H23: solo el gerente, y siempre de su propia sucursal
-  if (usuario.rol !== "GERENTE" || usuario.sucursalId === null) {
+  if (usuario.sucursalId === null) {
     return (
       <main className="py-8">
         <p

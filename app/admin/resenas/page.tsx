@@ -11,9 +11,10 @@ export const metadata: Metadata = {
 export default async function ModeracionResenasPage() {
   const usuario = await obtenerUsuarioActual();
   if (!usuario) redirect("/login");
+  if (usuario.rol !== "GERENTE") redirect("/menu");
 
   // H24: solo el gerente modera las reseñas de su sucursal
-  if (usuario.rol !== "GERENTE" || usuario.sucursalId === null) {
+  if (usuario.sucursalId === null) {
     return (
       <main className="py-8">
         <p

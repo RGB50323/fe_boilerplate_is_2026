@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { MarcoReservas } from "@/components/reservaciones/marco-reservas";
 import { rutaRetorno } from "@/lib/retorno-login";
+import { soloClientes } from "@/lib/solo-clientes";
 import { MisReservacionesView } from "./mis-reservaciones-view";
 
 export const metadata: Metadata = { title: "Mis reservaciones | Los Burle" };
@@ -19,6 +20,7 @@ export default async function MisReservacionesPage({
       : undefined;
   // Sin sesión, el login regresa a la misma reservación
   if (!(await getSession())) redirect(`/login?next=${rutaRetorno(destacada)}`);
+  await soloClientes();
   return (
     <MarcoReservas
       titulo="Mis reservaciones"

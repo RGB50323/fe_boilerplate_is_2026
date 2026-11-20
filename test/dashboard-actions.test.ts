@@ -15,13 +15,19 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/session", () => ({
   ROL_GERENTE_GENERAL: "GERENTE_GENERAL",
+  ROL_GERENTE: "GERENTE",
+  ROLES_DASHBOARD: ["GERENTE_GENERAL", "GERENTE"],
   getSession: mocks.getSession,
   getUsuarioActual: mocks.getUsuarioActual,
 }));
 
 const gerente = {
   estado: "ok",
-  usuario: { id: "1", email: "gerente@losburle.com", rol: "GERENTE_GENERAL" },
+  usuario: { id: "1", email: "gerente@losburle.com", rol: "GERENTE_GENERAL", sucursalId: null },
+};
+const gerenteSucursal = {
+  estado: "ok",
+  usuario: { id: "3", email: "gerente.centro@losburle.com", rol: "GERENTE", sucursalId: 1 },
 };
 const mesero = {
   estado: "ok",
@@ -83,6 +89,18 @@ describe("consultarDashboard", () => {
       "http://api.test/api/v1/dashboard/ventas?desde=2026-10-01&hasta=2026-10-31&sucursalId=2&diaSemana=5",
     );
     expect(init.headers).toEqual({ Authorization: "Bearer token-123" });
+  });
+
+  it("el gerente de sucursal consulta solo la suya aunque el filtro pida otra", async () => {
+    mocks.getUsuarioActual.mockResolvedValue(gerenteSucursal);
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(respuestaApi));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await consultarDashboard({ ...rangoOctubre, sucursalId: "2" });
+
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "http://api.test/api/v1/dashboard/ventas?desde=2026-10-01&hasta=2026-10-31&sucursalId=1",
+    );
   });
 
   it("traduce un 403 del backend a sin acceso", async () => {

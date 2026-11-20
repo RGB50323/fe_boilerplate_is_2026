@@ -64,6 +64,7 @@ export function rutaDeReferencia(
   if (!referencia) return null;
   const tipo = referencia.tipo.toUpperCase();
 
+  if (tipo === "ALERTA_INSUMO") return "/admin/inventario/alertas";
   // Rutas aún no creadas
   if (tipo.startsWith("PEDIDO"))
     return `/pedidos/${encodeURIComponent(String(referencia.id))}`;

@@ -5,7 +5,12 @@ import {
   type FiltrosDashboard,
 } from "@/lib/dashboard";
 import { usarDatosDePrueba } from "@/lib/dashboard-datos-prueba";
-import { getSession, getUsuarioActual, ROL_GERENTE_GENERAL } from "@/lib/session";
+import {
+  getSession,
+  getUsuarioActual,
+  ROL_GERENTE,
+  ROLES_DASHBOARD,
+} from "@/lib/session";
 
 export type MotivoError = "sin-sesion" | "sin-acceso" | "rango-invalido" | "error";
 export type ErrorDashboard = { error: string; motivo: MotivoError };
@@ -45,16 +50,27 @@ export async function prepararConsulta(
   if (usuario.estado === "sin-sesion") {
     return { error: ERROR_SESION, motivo: "sin-sesion" };
   }
-  if (usuario.estado === "ok" && usuario.usuario.rol !== ROL_GERENTE_GENERAL) {
+  if (usuario.estado === "ok" && !ROLES_DASHBOARD.includes(usuario.usuario.rol)) {
     return { error: ERROR_ACCESO, motivo: "sin-acceso" };
   }
   if (usuario.estado === "error" && !datosPrueba) {
     return { error: ERROR_GENERAL, motivo: "error" };
   }
 
+  // El gerente de sucursal solo consulta la suya, sin importar el filtro.
+  const sucursalGerente =
+    usuario.estado === "ok" && usuario.usuario.rol === ROL_GERENTE
+      ? (usuario.usuario.sucursalId ?? undefined)
+      : null;
+
   return {
     rango,
-    sucursalId: filtros.sucursalId ? Number(filtros.sucursalId) : undefined,
+    sucursalId:
+      sucursalGerente !== null
+        ? sucursalGerente
+        : filtros.sucursalId
+          ? Number(filtros.sucursalId)
+          : undefined,
     dia: filtros.dia ? Number(filtros.dia) : undefined,
     datosPrueba,
   };

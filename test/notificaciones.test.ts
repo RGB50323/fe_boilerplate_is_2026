@@ -33,6 +33,12 @@ describe("helpers de notificaciones", () => {
     );
   });
 
+  it("la alerta de insumo lleva al panel de alertas del gerente", () => {
+    expect(rutaDeReferencia({ tipo: "ALERTA_INSUMO", id: "9" })).toBe(
+      "/admin/inventario/alertas",
+    );
+  });
+
   it("los avisos de H26 llevan a la reservación en Mis reservaciones", () => {
     expect(
       rutaDeReferencia({ tipo: "RESERVA_CONFIRMADA", id: "R-000012" }),

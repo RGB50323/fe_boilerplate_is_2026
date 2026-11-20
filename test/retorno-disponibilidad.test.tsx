@@ -10,6 +10,7 @@ vi.mock("next/font/google", () => ({
   Fraunces: () => ({ variable: "fuente", className: "fuente" }),
 }));
 vi.mock("next/server", () => ({ connection: vi.fn() }));
+vi.mock("@/lib/solo-clientes", () => ({ soloClientes: vi.fn() }));
 vi.mock("@/app/actions/reservaciones", () => ({
   listarSucursales: vi.fn(),
   consultarDisponibilidad: vi.fn(),

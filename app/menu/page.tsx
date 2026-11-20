@@ -31,6 +31,8 @@ export default async function MenuPage() {
       autenticado={autenticado}
       esGerente={usuario?.rol === "GERENTE"}
       esMesero={usuario?.rol === "MESERO"}
+      esCocina={usuario?.rol === "COCINA"}
+      esGerenteGeneral={usuario?.rol === "GERENTE_GENERAL"}
       sucursales={sucursales}
     />
   );
