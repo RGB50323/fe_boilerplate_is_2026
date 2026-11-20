@@ -6,6 +6,7 @@ import {
 } from "@/app/actions/reservaciones";
 import { MarcoReservas } from "@/components/reservaciones/marco-reservas";
 import { rutaDisponibilidad } from "@/lib/confirmacion-reserva";
+import { soloClientes } from "@/lib/solo-clientes";
 import { ReservaForm } from "./reserva-form";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default async function NuevaReservaPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await soloClientes();
   const params = await searchParams;
   const texto = (campo: string) =>
     typeof params[campo] === "string" ? (params[campo] as string) : "";

@@ -7,6 +7,7 @@ import {
   listarSucursales,
   consultarDisponibilidad,
 } from "@/app/actions/reservaciones";
+import { soloClientes } from "@/lib/solo-clientes";
 import { DisponibilidadView } from "./disponibilidad-view";
 import { MesaIcon } from "./mesa-icon";
 
@@ -29,6 +30,7 @@ export default async function ReservasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await connection();
+  await soloClientes();
   const { sucursales, error } = await listarSucursales();
   const ahora = new Date();
   const fecha = fechaLocal(ahora);

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { obtenerReservacion } from "@/app/actions/edicion-reserva";
 import { MarcoReservas } from "@/components/reservaciones/marco-reservas";
+import { soloClientes } from "@/lib/solo-clientes";
 import { EditarReservaForm } from "./editar-reserva-form";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default async function EditarReservaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await soloClientes();
   const resultado = await obtenerReservacion(id);
   if (resultado.sinSesion) redirect(loginEdicion(id));
   return (

@@ -165,6 +165,14 @@ describe("tablero de cocina", () => {
     expect(screen.getByText("Los pedidos nuevos aparecerán aquí automáticamente")).toBeInTheDocument();
   });
 
+  it("el encabezado lleva al menú desde el logo y desde Ver menú", async () => {
+    mocks.listar.mockResolvedValue({ pedidos: [] });
+    montar();
+    await conectar();
+    expect(screen.getByRole("link", { name: "Los Burle" })).toHaveAttribute("href", "/menu");
+    expect(screen.getByRole("link", { name: "Ver menú" })).toHaveAttribute("href", "/menu");
+  });
+
   it("muestra error con reintentar", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.listar

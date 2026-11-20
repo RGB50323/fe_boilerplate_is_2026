@@ -63,7 +63,13 @@ function filtrosDe(qs: string): FiltrosDashboard {
 }
 
 // Sucursales del backend (listarSucursales en app/dashboard/page.tsx).
-function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
+function Dashboard({
+  sucursales,
+  sucursalFija,
+}: {
+  sucursales: Sucursal[];
+  sucursalFija?: Sucursal;
+}) {
   const router = useRouter();
   const qs = useSearchParams().toString();
   const filtros = useMemo(() => filtrosDe(qs), [qs]);
@@ -161,6 +167,7 @@ function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
         vista="general"
         titulo="Dashboard"
         consultaPeriodo={periodoAQuery(filtros)}
+        conComparativo={!sucursalFija}
       />
 
       <BarraPeriodo
@@ -168,16 +175,25 @@ function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
         onCambiar={(p) => navegar({ ...filtros, ...p })}
         onLimpiar={limpiarFiltros}
         controles={
-          <Dropdown
-            id="sucursal"
-            className="min-w-36 py-2 text-sm"
-            label="Sucursal"
-            labelClassName="ml-1 text-sm text-zinc-400"
-            value={filtros.sucursalId}
-            placeholder="Todas"
-            onChange={(sucursalId) => navegar({ ...filtros, sucursalId })}
-            opciones={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
-          />
+          sucursalFija ? (
+            <p className="flex items-center gap-2 text-sm">
+              <span className="ml-1 text-zinc-400">Sucursal</span>
+              <span className="rounded-lg border border-zinc-700 bg-[#262626] px-3 py-2">
+                {sucursalFija.nombre}
+              </span>
+            </p>
+          ) : (
+            <Dropdown
+              id="sucursal"
+              className="min-w-36 py-2 text-sm"
+              label="Sucursal"
+              labelClassName="ml-1 text-sm text-zinc-400"
+              value={filtros.sucursalId}
+              placeholder="Todas"
+              onChange={(sucursalId) => navegar({ ...filtros, sucursalId })}
+              opciones={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
+            />
+          )
         }
         acciones={
           <Button
@@ -230,7 +246,7 @@ function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
               <SeccionVentas
                 respuesta={respuestaLista}
                 cargando={cargandoLista}
-                mostrarSucursal={!filtros.sucursalId}
+                mostrarSucursal={!filtros.sucursalId && !sucursalFija}
                 onPagina={(p) => setPaginaEn({ qs, pagina: p })}
                 onReintentar={() => setReintento((n) => n + 1)}
               />
@@ -505,13 +521,19 @@ function Contenido({
   );
 }
 
-export function DashboardView({ sucursales }: { sucursales: Sucursal[] }) {
+export function DashboardView({
+  sucursales,
+  sucursalFija,
+}: {
+  sucursales: Sucursal[];
+  sucursalFija?: Sucursal;
+}) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-2 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando dashboard..." />}>
-        <Dashboard sucursales={sucursales} />
+        <Dashboard sucursales={sucursales} sucursalFija={sucursalFija} />
       </Suspense>
     </main>
   );

@@ -227,7 +227,7 @@ describe("pantalla del menú", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("al cerrar sesión llama a logout", async () => {
+  it("al cerrar sesión llama a logout y manda al login", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     mocks.logout.mockResolvedValue(undefined);
     render(<MenuView autenticado sucursales={SUCURSALES} />);
@@ -236,6 +236,7 @@ describe("pantalla del menú", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
 
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith("/login"));
   });
 
   it("muestra el acceso a Gestionar platillos al gerente", async () => {
@@ -246,6 +247,18 @@ describe("pantalla del menú", () => {
     expect(
       screen.getByRole("link", { name: "Gestionar platillos" }),
     ).toHaveAttribute("href", "/admin/platillos");
+  });
+
+  it("cocina ve su tablero y no las opciones de cliente", async () => {
+    mocks.consultarMenu.mockResolvedValue({ menu });
+    render(<MenuView autenticado esCocina sucursales={SUCURSALES} />);
+    await screen.findByText("Horchata");
+
+    expect(
+      screen.getByRole("link", { name: "Tablero de cocina" }),
+    ).toHaveAttribute("href", "/cocina");
+    expect(screen.queryByRole("link", { name: "Mis pedidos" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Agregar/ })).not.toBeInTheDocument();
   });
 
   it("muestra al gerente el contador de alertas de inventario con las activas", async () => {

@@ -49,11 +49,15 @@ function Menu({
   autenticado,
   esGerente,
   esMesero,
+  esCocina,
+  esGerenteGeneral,
   sucursales,
 }: {
   autenticado: boolean;
   esGerente: boolean;
   esMesero: boolean;
+  esCocina: boolean;
+  esGerenteGeneral: boolean;
   sucursales: Sucursal[];
 }) {
   const router = useRouter();
@@ -77,7 +81,7 @@ function Menu({
   const [cerrandoSesion, cerrarSesion] = useTransition();
 
   const carrito = useCarritoLlevar(sucursalId);
-  const puedePedir = !esGerente && !esMesero;
+  const puedePedir = !esGerente && !esMesero && !esCocina && !esGerenteGeneral;
 
   const errores = validarFiltros(entrada);
   const clave = `${qs}#${reintento}`;
@@ -204,10 +208,13 @@ function Menu({
             autenticado={autenticado}
             esGerente={esGerente}
             esMesero={esMesero}
+            esCocina={esCocina}
+            esGerenteGeneral={esGerenteGeneral}
             cerrandoSesion={cerrandoSesion}
             onCerrarSesion={() =>
               cerrarSesion(async () => {
                 await logout();
+                router.replace("/login");
               })
             }
             onIniciarSesion={() => router.push("/login")}
@@ -386,11 +393,15 @@ export function MenuView({
   autenticado,
   esGerente = false,
   esMesero = false,
+  esCocina = false,
+  esGerenteGeneral = false,
   sucursales,
 }: {
   autenticado: boolean;
   esGerente?: boolean;
   esMesero?: boolean;
+  esCocina?: boolean;
+  esGerenteGeneral?: boolean;
   sucursales: Sucursal[];
 }) {
   return (
@@ -402,6 +413,8 @@ export function MenuView({
           autenticado={autenticado}
           esGerente={esGerente}
           esMesero={esMesero}
+          esCocina={esCocina}
+          esGerenteGeneral={esGerenteGeneral}
           sucursales={sucursales}
         />
       </Suspense>

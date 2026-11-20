@@ -2,6 +2,7 @@
 
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import type { EstadoConexion } from "@/lib/cocina/tablero";
@@ -85,11 +86,22 @@ export function TableroCocina({ socketUrl, token, sucursal }: Props) {
   return (
     <div className="mx-auto max-w-7xl">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-zinc-700 pb-4">
-        <p className="flex items-baseline gap-4">
-          <span className="text-2xl text-[#FF7A1A] sm:text-3xl">Los Burle</span>
-          <span className="text-xl text-zinc-400 sm:text-2xl">Panel de cocina</span>
-        </p>
+        <div className="flex items-baseline gap-4">
+          <Link
+            href="/menu"
+            className="text-2xl text-[#FF7A1A] hover:text-orange-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400 sm:text-3xl"
+          >
+            Los Burle
+          </Link>
+          <p className="text-xl text-zinc-400 sm:text-2xl">Panel de cocina</p>
+        </div>
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href="/menu"
+            className="py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white"
+          >
+            Ver menú
+          </Link>
           {sucursal && (
             <p className="flex items-center gap-3">
               <span className="text-sm text-zinc-400">Sucursal</span>

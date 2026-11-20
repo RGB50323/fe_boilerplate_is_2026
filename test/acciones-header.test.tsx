@@ -21,23 +21,46 @@ describe("enlacesDelHeader", () => {
     ).toEqual(["Reservar mesa", "Mis pedidos", "Mi perfil"]);
   });
 
-  it("mesero: sin Reservar mesa ni Mis pedidos", () => {
+  it("mesero: sin Reservar mesa, Mis pedidos ni Mi perfil", () => {
     expect(
       textos({ autenticado: true, esGerente: false, esMesero: true }),
-    ).toEqual(["Mi perfil", "Por entregar", "Registrar pedido"]);
+    ).toEqual(["Por entregar", "Registrar pedido"]);
   });
 
-  it("gerente: sin Reservar mesa ni Mis pedidos", () => {
+  it("gerente: sin Reservar mesa, Mis pedidos ni Mi perfil", () => {
     expect(
       textos({ autenticado: true, esGerente: true, esMesero: false }),
     ).toEqual([
-      "Mi perfil",
       "Ocupación",
       "Calificaciones",
       "Moderar reseñas",
       "Inventario",
+      "Cocina",
+      "Dashboard",
       "Gestionar platillos",
     ]);
+  });
+
+  it("cocina: solo el tablero de cocina", () => {
+    expect(
+      enlacesDelHeader({
+        autenticado: true,
+        esGerente: false,
+        esMesero: false,
+        esCocina: true,
+      }),
+    ).toEqual([{ href: "/cocina", texto: "Tablero de cocina", destacado: true }]);
+  });
+
+  it("gerente general: solo el dashboard", () => {
+    expect(
+      enlacesDelHeader({
+        autenticado: true,
+        esGerente: false,
+        esMesero: false,
+        esGerenteGeneral: true,
+      }),
+    ).toEqual([{ href: "/dashboard", texto: "Dashboard", destacado: true }]);
   });
 });
 

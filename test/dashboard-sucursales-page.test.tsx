@@ -8,6 +8,13 @@ import ComparativoPage from "@/app/dashboard/comparativo/page";
 const mocks = vi.hoisted(() => ({
   motivoSinAcceso: vi.fn(),
   listarSucursales: vi.fn(),
+  getUsuarioActual: vi.fn(),
+}));
+
+vi.mock("@/lib/session", () => ({
+  ROL_GERENTE: "GERENTE",
+  ROL_GERENTE_GENERAL: "GERENTE_GENERAL",
+  getUsuarioActual: mocks.getUsuarioActual,
 }));
 
 vi.mock("@/lib/dashboard-acceso", () => ({ motivoSinAcceso: mocks.motivoSinAcceso }));
@@ -15,8 +22,17 @@ vi.mock("@/app/actions/reservaciones", () => ({
   listarSucursales: mocks.listarSucursales,
 }));
 vi.mock("@/app/dashboard/dashboard-view", () => ({
-  DashboardView: ({ sucursales }: { sucursales: { id: number; nombre: string }[] }) => (
-    <p>General: {sucursales.map((s) => `${s.id}-${s.nombre}`).join(", ")}</p>
+  DashboardView: ({
+    sucursales,
+    sucursalFija,
+  }: {
+    sucursales: { id: number; nombre: string }[];
+    sucursalFija?: { nombre: string };
+  }) => (
+    <p>
+      General: {sucursales.map((s) => `${s.id}-${s.nombre}`).join(", ")}
+      {sucursalFija && ` (fija: ${sucursalFija.nombre})`}
+    </p>
   ),
 }));
 vi.mock("@/app/dashboard/comparativo/comparativo-view", () => ({
@@ -42,6 +58,10 @@ describe.each(paginas)("página $nombre del dashboard", ({ nombre, Pagina }) => 
   beforeEach(() => {
     mocks.motivoSinAcceso.mockReset().mockResolvedValue(null);
     mocks.listarSucursales.mockReset().mockResolvedValue({ sucursales });
+    mocks.getUsuarioActual.mockReset().mockResolvedValue({
+      estado: "ok",
+      usuario: { id: "1", email: "g@example.com", rol: "GERENTE_GENERAL", sucursalId: null },
+    });
   });
 
   it("pasa a la vista las sucursales del backend", async () => {
@@ -66,5 +86,26 @@ describe.each(paginas)("página $nombre del dashboard", ({ nombre, Pagina }) => 
     render(await Pagina());
     expect(screen.getByText("Sin acceso: sin-acceso")).toBeInTheDocument();
     expect(mocks.listarSucursales).not.toHaveBeenCalled();
+  });
+});
+
+describe("dashboard del gerente de sucursal", () => {
+  beforeEach(() => {
+    mocks.motivoSinAcceso.mockReset().mockResolvedValue(null);
+    mocks.listarSucursales.mockReset().mockResolvedValue({ sucursales });
+    mocks.getUsuarioActual.mockReset().mockResolvedValue({
+      estado: "ok",
+      usuario: { id: "3", email: "g@example.com", rol: "GERENTE", sucursalId: 25 },
+    });
+  });
+
+  it("la vista general queda fija en su sucursal", async () => {
+    render(await DashboardPage());
+    expect(screen.getByText(/\(fija: San Miguel\)/)).toBeInTheDocument();
+  });
+
+  it("el comparativo solo admite al gerente general", async () => {
+    await ComparativoPage();
+    expect(mocks.motivoSinAcceso).toHaveBeenCalledWith(["GERENTE_GENERAL"]);
   });
 });

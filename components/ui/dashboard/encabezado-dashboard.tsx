@@ -39,10 +39,12 @@ export function EncabezadoDashboard({
   vista,
   titulo,
   consultaPeriodo,
+  conComparativo = true,
 }: {
   vista: Vista;
   titulo: string;
   consultaPeriodo: string;
+  conComparativo?: boolean;
 }) {
   const router = useRouter();
   const [cerrandoSesion, cerrarSesion] = useTransition();
@@ -95,7 +97,7 @@ export function EncabezadoDashboard({
       <nav aria-label="Vista" className="mt-6 flex items-center gap-3 font-sans text-sm">
         <span aria-hidden="true" className="text-zinc-400">Vista</span>
         <div className="flex rounded-xl bg-[#2b2b2f] p-1">
-          {VISTAS.map((v) =>
+          {VISTAS.filter((v) => conComparativo || v.vista !== "comparativo").map((v) =>
             v.vista === vista ? (
               <span
                 key={v.vista}

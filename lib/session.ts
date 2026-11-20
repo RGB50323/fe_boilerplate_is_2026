@@ -33,8 +33,15 @@ export async function deleteSession() {
 }
 
 export const ROL_GERENTE_GENERAL = "GERENTE_GENERAL";
+export const ROL_GERENTE = "GERENTE";
+export const ROLES_DASHBOARD = [ROL_GERENTE_GENERAL, ROL_GERENTE];
 
-export type UsuarioActual = { id: string; email: string; rol: string };
+export type UsuarioActual = {
+  id: string;
+  email: string;
+  rol: string;
+  sucursalId: number | null;
+};
 
 export type EstadoUsuario =
   | { estado: "ok"; usuario: UsuarioActual }
@@ -71,7 +78,12 @@ export const getUsuarioActual = cache(async (): Promise<EstadoUsuario> => {
     }
     return {
       estado: "ok",
-      usuario: { id: String(data.id), email: String(data.email ?? ""), rol },
+      usuario: {
+        id: String(data.id),
+        email: String(data.email ?? ""),
+        rol,
+        sucursalId: typeof data.sucursalId === "number" ? data.sucursalId : null,
+      },
     };
   } catch (error) {
     console.error("Error al consultar auth/me:", error);
