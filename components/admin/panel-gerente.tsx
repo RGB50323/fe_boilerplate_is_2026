@@ -3,6 +3,7 @@ import { CampanaNotificaciones } from "@/components/notificaciones/campana-notif
 import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Fraunces } from "next/font/google";
 import type { ReactNode } from "react";
+import { ENLACE_BENEFICIOS } from "@/lib/roles";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -20,10 +21,22 @@ export const ENLACES_GERENTE = [
   { href: "/admin/platillos", texto: "Platillos" },
   { href: "/cocina", texto: "Cocina" },
   { href: "/dashboard", texto: "Dashboard" },
+  ENLACE_BENEFICIOS,
   { href: "/menu", texto: "Ver menú" },
 ];
 
-export function PanelGerente({ children }: { children: ReactNode }) {
+const ENLACES_GERENTE_GENERAL = ENLACES_GERENTE.filter(
+  ({ href }) => ["/dashboard", "/menu", ENLACE_BENEFICIOS.href].includes(href),
+);
+
+export function PanelGerente({
+  children,
+  gerenteGeneral = false,
+}: {
+  children: ReactNode;
+  gerenteGeneral?: boolean;
+}) {
+  const enlaces = gerenteGeneral ? ENLACES_GERENTE_GENERAL : ENLACES_GERENTE;
   return (
     <div
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
@@ -41,14 +54,14 @@ export function PanelGerente({ children }: { children: ReactNode }) {
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {ENLACES_GERENTE.map((e) => (
+              {enlaces.map((e) => (
                 <Link key={e.href} href={e.href} className={ENLACE}>
                   {e.texto}
                 </Link>
               ))}
             </nav>
             <div className="flex items-center gap-3">
-              <ContadorAlertas />
+              {!gerenteGeneral && <ContadorAlertas />}
               <CampanaNotificaciones enLinea />
             </div>
           </div>

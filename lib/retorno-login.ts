@@ -1,4 +1,5 @@
 import { esRutaEdicion } from "@/lib/edicion-reserva";
+import { ENLACE_BENEFICIOS } from "@/lib/roles";
 // Lista explícita: nunca redirigimos a una URL externa proporcionada por el navegador.
 export function retornoLogin(valor: unknown): string {
   if (
@@ -12,7 +13,7 @@ export function retornoLogin(valor: unknown): string {
     const url = new URL(valor, "https://losburle.local");
     if (
       url.origin !== "https://losburle.local" ||
-      (!["/reservas/nueva", "/perfil/reservaciones", "/reservas"].includes(
+      (!["/reservas/nueva", "/perfil/reservaciones", "/reservas", ENLACE_BENEFICIOS.href].includes(
         url.pathname,
       ) &&
         !esRutaEdicion(url.pathname))

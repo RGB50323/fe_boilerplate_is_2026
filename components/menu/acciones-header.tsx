@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Button } from "@/components/ui/button";
+import { ENLACE_BENEFICIOS } from "@/lib/roles";
 
 export type EnlaceHeader = { href: string; texto: string; destacado?: boolean };
 
@@ -54,6 +55,9 @@ export function enlacesDelHeader({
   }
   if (esGerenteGeneral) {
     enlaces.push({ href: "/dashboard", texto: "Dashboard", destacado: true });
+  }
+  if (autenticado && (esGerente || esGerenteGeneral)) {
+    enlaces.push(ENLACE_BENEFICIOS);
   }
   return enlaces;
 }

@@ -4,10 +4,15 @@ export const ROLES_MESERO = ["MESERO"] as const;
 
 export const ROLES_GERENTE = ["GERENTE"] as const;
 
+export const ROLES_BENEFICIOS: readonly string[] = ["GERENTE", "GERENTE_GENERAL"];
+export const ENLACE_BENEFICIOS = { href: "/admin/beneficios", texto: "Beneficios" };
+export const LOGIN_BENEFICIOS = `/login?next=${encodeURIComponent(ENLACE_BENEFICIOS.href)}`;
+
 export const ROLES_POR_RUTA: Record<string, readonly string[]> = {
   "/cocina": ROLES_COCINA,
   "/mesero/entregas": ROLES_MESERO,
   "/admin/inventario": ROLES_GERENTE,
+  [ENLACE_BENEFICIOS.href]: ROLES_BENEFICIOS,
 };
 
 type Payload = Record<string, unknown>;
