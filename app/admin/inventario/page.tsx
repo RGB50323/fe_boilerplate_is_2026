@@ -8,7 +8,12 @@ export const metadata: Metadata = {
   title: "Inventario de insumos | Los Burle",
 };
 
-export default async function InventarioPage() {
+export default async function InventarioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ insumo?: string }>;
+}) {
+  const { insumo } = await searchParams;
   const usuario = await obtenerUsuarioActual();
   if (!usuario) redirect("/login");
   if (usuario.rol !== "GERENTE" || usuario.sucursalId === null) {
@@ -18,5 +23,12 @@ export default async function InventarioPage() {
   const { sucursales } = await listarSucursales();
   const sucursalNombre = sucursales.find((s) => s.id === usuario.sucursalId)?.nombre;
 
-  return <InventarioView sucursalNombre={sucursalNombre} />;
+  const insumoResaltado = Number(insumo);
+
+  return (
+    <InventarioView
+      sucursalNombre={sucursalNombre}
+      insumoResaltado={Number.isInteger(insumoResaltado) && insumoResaltado > 0 ? insumoResaltado : undefined}
+    />
+  );
 }

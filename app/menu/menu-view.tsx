@@ -6,6 +6,7 @@ import { Fraunces } from "next/font/google";
 import { useRouter, useSearchParams } from "next/navigation";
 import { consultarMenu } from "@/app/actions/menu";
 import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
+import { ContadorAlertas } from "@/components/inventario/contador-alertas";
 import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -197,6 +198,7 @@ function Menu({
               label: s.nombre,
             }))}
           />
+          {autenticado && esGerente && <ContadorAlertas />}
           {autenticado && <CampanaNotificaciones enLinea />}
           <AccionesHeader
             autenticado={autenticado}

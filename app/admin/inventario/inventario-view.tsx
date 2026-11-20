@@ -10,6 +10,7 @@ import {
   type InsumosResultado,
   type MovimientoResultado,
 } from "@/app/actions/inventario";
+import { refrescarAlertas } from "@/components/inventario/alertas-store";
 import { DialogoMovimiento, type RespuestaMovimiento } from "@/components/inventario/dialogo-movimiento";
 import { EncabezadoInventario, EsqueletoInventario } from "@/components/inventario/esqueleto-inventario";
 import { FormularioInsumo, type RespuestaFormulario } from "@/components/inventario/formulario-insumo";
@@ -57,7 +58,13 @@ async function existenciaVigente(insumo: Insumo): Promise<Insumo> {
   return resultado.insumos.find((i) => i.id === insumo.id) ?? insumo;
 }
 
-export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) {
+export function InventarioView({
+  sucursalNombre,
+  insumoResaltado,
+}: {
+  sucursalNombre?: string;
+  insumoResaltado?: number;
+}) {
   const router = useRouter();
   const [carga, setCarga] = useState<Carga>("cargando");
   const [insumos, setInsumos] = useState<Insumo[]>([]);
@@ -72,6 +79,7 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
   const siguienteAviso = useRef(0);
   const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const consultaVigente = useRef("");
+  const resaltadoVisto = useRef(false);
 
   const avisar = useCallback((texto: string, variante: Aviso["variante"]) => {
     setAviso({ id: ++siguienteAviso.current, texto, variante });
@@ -109,6 +117,14 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
     void cargar("");
     return () => clearTimeout(temporizador.current);
   }, [cargar]);
+
+  useEffect(() => {
+    if (carga !== "listo" || !insumoResaltado || resaltadoVisto.current) return;
+    const fila = document.getElementById(`insumo-${insumoResaltado}`);
+    if (!fila) return;
+    resaltadoVisto.current = true;
+    fila.scrollIntoView?.({ block: "center" });
+  }, [carga, insumoResaltado, insumos]);
 
   function buscar(texto: string) {
     setBusqueda(texto);
@@ -170,6 +186,7 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
       );
       setAMover(null);
       avisar("Movimiento registrado", "success");
+      void refrescarAlertas();
       return undefined;
     }
     if ("limiteExcedido" in resultado) {
@@ -245,7 +262,10 @@ export function InventarioView({ sucursalNombre }: { sucursalNombre?: string }) 
           <div
             className={`transition-opacity duration-200 motion-reduce:transition-none ${buscando ? "opacity-40" : ""}`}
           >
-            <TablaInsumos insumos={insumos} onMovimiento={setAMover} onHistorial={setHistorialDe} />
+            <TablaInsumos
+              insumos={insumos}
+              resaltadoId={insumoResaltado}
+              onMovimiento={setAMover} onHistorial={setHistorialDe} />
             <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-400">
               <span>Los insumos en estado «Bajo» se muestran primero</span>
               <span aria-hidden="true">·</span>

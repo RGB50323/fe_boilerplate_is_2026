@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   params: { current: new URLSearchParams() },
   consultarMenu: vi.fn(),
   logout: vi.fn(),
+  listarAlertas: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,6 +22,9 @@ vi.mock("@/app/actions/menu", () => ({
   consultarMenu: mocks.consultarMenu,
 }));
 vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout }));
+vi.mock("@/app/actions/alertas-inventario", () => ({
+  listarAlertas: mocks.listarAlertas,
+}));
 vi.mock("@/components/notificaciones/campana-notificaciones", () => ({
   CampanaNotificaciones: () => null,
 }));
@@ -64,6 +68,8 @@ describe("pantalla del menú", () => {
     mocks.router.replace.mockClear();
     mocks.router.push.mockClear();
     mocks.consultarMenu.mockReset();
+    mocks.listarAlertas.mockReset();
+    mocks.listarAlertas.mockResolvedValue({ alertas: [] });
     mocks.logout.mockReset();
     mocks.params.current = new URLSearchParams();
   });
@@ -242,6 +248,20 @@ describe("pantalla del menú", () => {
     ).toHaveAttribute("href", "/admin/platillos");
   });
 
+  it("muestra al gerente el contador de alertas de inventario con las activas", async () => {
+    mocks.consultarMenu.mockResolvedValue({ menu });
+    mocks.listarAlertas.mockResolvedValue({
+      alertas: [
+        { id: 1, insumoId: 5, insumo: "Masa de maíz", cantidad: 18, minimo: 20, unidad: "lb", estado: "ACTIVA", creadaEn: "2026-11-12T18:40:00Z" },
+      ],
+    });
+    render(<MenuView autenticado esGerente sucursales={SUCURSALES} />);
+
+    expect(
+      await screen.findByRole("link", { name: "Alertas de inventario, 1 alerta activa" }),
+    ).toHaveAttribute("href", "/admin/inventario/alertas");
+  });
+
   it("no muestra el acceso a Gestionar platillos si no es gerente", async () => {
     mocks.consultarMenu.mockResolvedValue({ menu });
     render(<MenuView autenticado sucursales={SUCURSALES} />);
@@ -250,5 +270,7 @@ describe("pantalla del menú", () => {
     expect(
       screen.queryByRole("link", { name: "Gestionar platillos" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Alertas de inventario/ })).not.toBeInTheDocument();
+    expect(mocks.listarAlertas).not.toHaveBeenCalled();
   });
 });

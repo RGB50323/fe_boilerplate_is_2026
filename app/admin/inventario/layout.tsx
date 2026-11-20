@@ -1,3 +1,5 @@
+import { ContadorAlertas } from "@/components/inventario/contador-alertas";
+import { CampanaNotificaciones } from "@/components/notificaciones/campana-notificaciones";
 import { EnlaceConSucursal as Link } from "@/components/ui/enlace-con-sucursal";
 import { Fraunces } from "next/font/google";
 import type { ReactNode } from "react";
@@ -26,14 +28,23 @@ export default function InventarioLayout({ children }: { children: ReactNode }) 
             </Link>
             <p className="text-lg text-zinc-400 sm:text-2xl">Panel de gerente</p>
           </div>
-          <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <Link href="/admin/platillos" className={ENLACE}>
-              Platillos
-            </Link>
-            <Link href="/menu" className={ENLACE}>
-              Ver menú
-            </Link>
-          </nav>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <Link href="/admin/inventario" className={ENLACE}>
+                Inventario
+              </Link>
+              <Link href="/admin/platillos" className={ENLACE}>
+                Platillos
+              </Link>
+              <Link href="/menu" className={ENLACE}>
+                Ver menú
+              </Link>
+            </nav>
+            <div className="flex items-center gap-3">
+              <ContadorAlertas />
+              <CampanaNotificaciones enLinea />
+            </div>
+          </div>
         </header>
         {children}
       </div>
