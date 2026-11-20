@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  inicioDelToken,
   rolesRequeridosPara,
   tieneRolPermitido,
   tokenVencido,
@@ -34,15 +35,19 @@ export function proxy(request: NextRequest) {
 
   if (
     isGuestOnlyRoute &&
-    hasSession &&
+    token &&
     retornoLogin(request.nextUrl.searchParams.get("next")) === "/menu"
   ) {
-    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
+    return responder(
+      NextResponse.redirect(new URL(inicioDelToken(token), request.nextUrl)),
+    );
   }
 
   const requiredRoles = rolesRequeridosPara(pathname);
   if (token && requiredRoles && !tieneRolPermitido(token, requiredRoles)) {
-    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
+    return responder(
+      NextResponse.redirect(new URL(inicioDelToken(token), request.nextUrl)),
+    );
   }
 
   return responder(NextResponse.next());
