@@ -8,6 +8,10 @@ export async function procesarPago(solicitud: SolicitudPago) {
     metodo: "POST",
     cuerpo: solicitud,
     detallarErrores: true,
+    mensajesValidacion: [
+      "El correo no corresponde a un cliente registrado.",
+      "El cliente no está habilitado para acumular puntos.",
+    ],
     mensajes: {
       400: "Revisa el importe, los datos del pago y el detalle del pedido.",
       404: "El pedido ya no está disponible.",

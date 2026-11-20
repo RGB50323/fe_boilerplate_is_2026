@@ -48,6 +48,13 @@ function cliente(actualizarPago: () => Promise<{ ok: true; datos: PedidoSeguimie
 beforeEach(() => {
   vi.resetAllMocks();
   sessionStorage.clear();
+  vi.mocked(consultarPagoPedido).mockResolvedValue({ ok: true, datos: null });
+  vi.mocked(obtenerPedido).mockResolvedValue({
+    ok: true,
+    datos: {
+      ...pedido, estado: "ENTREGADO", mesaId: 7, numero: null, creadoEn: "",
+    },
+  });
 });
 
 afterEach(() => {
@@ -182,6 +189,80 @@ describe("PagoPedido", () => {
     expect(screen.getByText("Cambio: $13.25")).toBeVisible();
   });
 
+  const correo = () => screen.getByLabelText("Correo del cliente (opcional)");
+  const claveMesa = "los-burle:pago:MESA:mesero:87";
+
+  it("valida y normaliza el correo de MESA en efectivo antes de enviar", async () => {
+    vi.mocked(procesarPago).mockResolvedValue({ ok: true, datos: resultado("CONFIRMADO", 24) });
+    mesa();
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.change(correo(), { target: { value: "invalido" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Ingresa un correo válido.");
+    expect(procesarPago).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(claveMesa)).toBeNull();
+
+    fireEvent.change(correo(), { target: { value: "  Cliente@Example.Test  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByText("Pago confirmado")).toBeVisible();
+    expect(procesarPago).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      metodo: "EFECTIVO", correoLealtad: "cliente@example.test",
+    }));
+    expect(sessionStorage.getItem(claveMesa)).toBeNull();
+  });
+
+  it.each(["correcto@example.test", "   "])(
+    "muestra el rechazo del correo y permite corregirlo o retirarlo: %s",
+    async (corregido) => {
+      vi.mocked(procesarPago)
+        .mockResolvedValueOnce({ ok: false, estado: 400, error: "El correo no corresponde a un cliente registrado." })
+        .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO", 24) });
+      mesa();
+      fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+      fireEvent.change(correo(), { target: { value: "desconocido@example.test" } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("El correo no corresponde a un cliente registrado.");
+      expect(procesarPago).toHaveBeenCalledOnce();
+      expect(sessionStorage.getItem(claveMesa)).toBeNull();
+      expect(correo()).toBeEnabled();
+
+      fireEvent.change(correo(), { target: { value: corregido } });
+      fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+      expect(await screen.findByText("Pago confirmado")).toBeVisible();
+      const [primera, segunda] = vi.mocked(procesarPago).mock.calls.map(([datos]) => datos);
+      expect(segunda.solicitudId).not.toBe(primera.solicitudId);
+      if (corregido.trim()) expect(segunda.correoLealtad).toBe(corregido);
+      else expect(segunda).not.toHaveProperty("correoLealtad");
+    },
+  );
+
+  it("reconcilia un cobro ambiguo ya confirmado y elimina la solicitud temporal", async () => {
+    vi.mocked(procesarPago).mockRejectedValue(new Error("Sin respuesta"));
+    vi.mocked(consultarPagoPedido).mockResolvedValue({
+      ok: true,
+      datos: { ...resultado("CONFIRMADO", 24), pedidoId: pedido.pedidoId, metodo: "EFECTIVO" },
+    });
+    mesa();
+    fireEvent.change(correo(), { target: { value: "cliente@example.test" } });
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByText("Pago confirmado")).toBeVisible();
+    expect(consultarPagoPedido).toHaveBeenCalledExactlyOnceWith(pedido.pedidoId);
+    expect(procesarPago).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem(claveMesa)).toBeNull();
+  });
+
+  it("limpia un intento guardado al abrir un cobro confirmado", () => {
+    sessionStorage.setItem(claveMesa, JSON.stringify({
+      solicitud: { solicitudId: "previa", correoLealtad: "cliente@example.test" },
+    }));
+    render(<PagoPedido tipo="MESA" usuarioId="mesero" estadoPedido="CERRADO"
+      pedido={pedido} pagoInicial={{ ok: true, datos: resultado("CONFIRMADO", 24) }} />);
+    expect(screen.getByText("Pago confirmado")).toBeVisible();
+    expect(procesarPago).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(claveMesa)).toBeNull();
+  });
+
   it("valida el efectivo, envía el DTO real y muestra confirmación y descarga", async () => {
     vi.mocked(procesarPago).mockResolvedValue({ ok: true, datos: resultado("CONFIRMADO", 24) });
     mesa();
@@ -209,6 +290,7 @@ describe("PagoPedido", () => {
     mesa();
     fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "TARJETA" } });
     completarTarjeta();
+    fireEvent.change(correo(), { target: { value: "cliente@example.test" } });
     expect(screen.getByLabelText("Número de tarjeta ficticia")).toHaveValue("4242 4242 4242 4242");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Pagar con tarjeta" })); });
     expect(screen.getByText("Pago pendiente")).toBeVisible();
@@ -216,7 +298,7 @@ describe("PagoPedido", () => {
     const [solicitud] = vi.mocked(procesarPago).mock.calls[0];
     expect(solicitud).toEqual({
       solicitudId: expect.any(String), ticket: expect.any(Object),
-      metodo: "TARJETA", marca: "VISA", ultimosCuatro: "4242",
+      metodo: "TARJETA", marca: "VISA", ultimosCuatro: "4242", correoLealtad: "cliente@example.test",
     });
     const guardado = sessionStorage.getItem("los-burle:pago:MESA:mesero:87") ?? "";
     for (const dato of ["4242424242424242", "4242 4242 4242 4242", "Ana Demo", "12/30", '"codigo"']) {
@@ -287,13 +369,17 @@ describe("PagoPedido", () => {
     vi.mocked(procesarPago).mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO", 24) });
     const vista = mesa();
     fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.change(correo(), { target: { value: " Original@Example.Test " } });
     const form = screen.getByRole("button", { name: "Confirmar pago" }).closest("form")!;
     fireEvent.submit(form);
     fireEvent.submit(form);
     expect(procesarPago).toHaveBeenCalledTimes(1);
     await act(async () => responder({ ok: false, error: "Sin conexión" }));
+    expect(consultarPagoPedido).toHaveBeenCalledExactlyOnceWith(pedido.pedidoId);
     vista.unmount();
     mesa();
+    expect(correo()).toBeDisabled();
+    expect(correo()).toHaveValue("original@example.test");
     fireEvent.click(screen.getByRole("button", { name: "Reintentar el mismo pago" }));
     await waitFor(() => expect(procesarPago).toHaveBeenCalledTimes(2));
     expect(vi.mocked(procesarPago).mock.calls[1]).toEqual(vi.mocked(procesarPago).mock.calls[0]);
@@ -307,6 +393,7 @@ describe("PagoPedido", () => {
     } });
     cliente(actualizarPago);
     fireEvent.click(screen.getByRole("button", { name: "Pagar" }));
+    expect(screen.queryByLabelText("Correo del cliente (opcional)")).not.toBeInTheDocument();
     completarTarjeta();
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Pagar con tarjeta" })); });
     expect(screen.getByText("Pago pendiente")).toBeVisible();
@@ -321,6 +408,7 @@ describe("PagoPedido", () => {
     expect(vi.mocked(procesarPago).mock.calls[0][0].solicitudId)
       .not.toBe(vi.mocked(procesarPago).mock.calls[1][0].solicitudId);
     expect(consultarPago).not.toHaveBeenCalled();
+    expect(vi.mocked(procesarPago).mock.calls[0][0]).not.toHaveProperty("correoLealtad");
   });
 
   it("protege LLEVAR confirmado aunque el pedido siga pendiente", () => {

@@ -21,6 +21,7 @@ type Opciones = {
   cuerpo?: unknown;
   mensajes?: Partial<Record<number, string>>;
   detallarErrores?: boolean;
+  mensajesValidacion?: readonly string[];
 };
 
 export async function llamar<T>(
@@ -30,6 +31,7 @@ export async function llamar<T>(
     cuerpo,
     mensajes = {},
     detallarErrores = false,
+    mensajesValidacion = [],
   }: Opciones = {},
 ): Promise<Resultado<T>> {
   try {
@@ -79,9 +81,12 @@ export async function llamar<T>(
               errores[campo] = mensaje;
           }
         }
+        const mensajeValidacion = response.status === 400
+          ? mensajesValidacion.find((mensaje) => mensaje === detalle?.message)
+          : undefined;
         return {
           ok: false,
-          error: mensajes[response.status] ?? ERROR_GENERICO,
+          error: mensajeValidacion ?? mensajes[response.status] ?? ERROR_GENERICO,
           estado: response.status,
           ...(typeof detalle?.codigo === "string"
             ? { codigo: detalle.codigo }
