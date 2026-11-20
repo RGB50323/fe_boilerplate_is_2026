@@ -9,6 +9,7 @@ export type PedidoSeguimiento = {
   total: number;
   creadoEn: string;
   pago: string | null;
+  comprobanteId?: number | null;
   items: ItemDetalle[];
 };
 

@@ -58,10 +58,32 @@ describe("SeguimientoPedido", () => {
 
   it("avisa que falta el pago cuando está pendiente", () => {
     montar({ ...recibido, estado: "PENDIENTE_PAGO", numero: null, pago: null });
+    expect(screen.getByRole("heading", { name: "#121" })).toBeVisible();
+    expect(screen.getByText("ID de pedido")).toBeVisible();
     expect(screen.getByRole("status")).toHaveTextContent("Pendiente de pago");
     expect(
       screen.getByText("Tu pedido llegará a cocina cuando se confirme tu pago."),
     ).toBeVisible();
+  });
+
+  it.each(["CONFIRMADO", "REEMBOLSADO"])("actualiza el seguimiento y detiene el sondeo al recibir %s", async (pago) => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(obtenerSeguimiento).mockResolvedValue({
+        ok: true, datos: { ...recibido, pago, comprobanteId: 24 },
+      });
+      const vista = montar({ ...recibido, estado: "PENDIENTE_PAGO", numero: null, pago: "PENDIENTE" });
+      expect(screen.getByRole("heading", { name: "#121" })).toBeVisible();
+      await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+      expect(obtenerSeguimiento).toHaveBeenCalledWith(121);
+      expect(screen.getByRole("heading", { name: "S1-000121" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Descargar comprobante PDF" })).toBeVisible();
+      await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+      expect(obtenerSeguimiento).toHaveBeenCalledOnce();
+      vista.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it.each(["PENDIENTE_PAGO", "EN_PREPARACION", "LISTO", "CANCELADO"])(

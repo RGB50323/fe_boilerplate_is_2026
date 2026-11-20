@@ -6,6 +6,7 @@ import {
   cancelarPedidoLlevar,
   obtenerSeguimiento,
 } from "@/app/actions/pedidos";
+import { PagoPedido } from "@/components/pagos/pago-pedido";
 import { Button } from "@/components/ui/button";
 import { formatoPrecio } from "@/lib/menu";
 import {
@@ -83,9 +84,9 @@ export function SeguimientoPedido({ inicial }: { inicial: PedidoSeguimiento }) {
         aria-label="Estado del pedido"
         className="rounded-2xl border border-zinc-800 bg-[#18181b] p-6 sm:p-8"
       >
-        <p className="text-sm text-zinc-400">Número de pedido</p>
+        <p className="text-sm text-zinc-400">{pedido.numero ? "Número de pedido" : "ID de pedido"}</p>
         <h2 className="mt-1 text-3xl font-semibold tabular-nums">
-          {pedido.numero ?? "—"}
+          {pedido.numero ?? `#${pedido.pedidoId}`}
         </h2>
 
         <p
@@ -94,10 +95,7 @@ export function SeguimientoPedido({ inicial }: { inicial: PedidoSeguimiento }) {
         >
           {etiquetaEstado(pedido.estado)}
         </p>
-        {pedido.pago === "REEMBOLSADO" && (
-          <p className="mt-3 text-green-300">Pago reembolsado</p>
-        )}
-        {pedido.estado === "PENDIENTE_PAGO" && (
+        {pedido.estado === "PENDIENTE_PAGO" && pedido.pago !== "CONFIRMADO" && (
           <p className="mt-3 text-sm text-zinc-300">
             Tu pedido llegará a cocina cuando se confirme tu pago.
           </p>
@@ -161,6 +159,17 @@ export function SeguimientoPedido({ inicial }: { inicial: PedidoSeguimiento }) {
         </p>
       </section>
 
+      <PagoPedido
+        key={pedido.pedidoId}
+        tipo="LLEVAR"
+        pedido={pedido}
+        estadoPedido={pedido.estado}
+        pago={pedido.pago}
+        comprobanteId={pedido.comprobanteId}
+        actualizarPago={() => obtenerSeguimiento(pedido.pedidoId)}
+        onSeguimiento={setPedido}
+      />
+
       {error && (
         <div
           role="alert"
@@ -211,7 +220,7 @@ export function SeguimientoPedido({ inicial }: { inicial: PedidoSeguimiento }) {
           </Button>
         ))}
 
-      {!cancelado && pedido.estado !== "ENTREGADO" && (
+      {!cancelado && pedido.estado !== "ENTREGADO" && pedido.pago !== "PENDIENTE" && (pedido.estado !== "PENDIENTE_PAGO" || pedido.pago === "CONFIRMADO") && (
         <button
           type="button"
           onClick={actualizar}
