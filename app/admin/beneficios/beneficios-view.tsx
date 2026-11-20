@@ -120,8 +120,10 @@ function Detalle({ beneficio }: { beneficio: Beneficio }) {
 }
 
 export function BeneficiosView({
+  reglaAcumulacion,
   inicial,
 }: {
+  reglaAcumulacion?: React.ReactNode;
   inicial: Resultado<Pagina<Beneficio>>;
 }) {
   const [resultado, setResultado] = useState(inicial);
@@ -245,6 +247,7 @@ export function BeneficiosView({
           Agregar beneficio
         </Button>
       </div>
+      {reglaAcumulacion}
       <div className="grid w-full gap-1 sm:max-w-xs">
         <label htmlFor="beneficios-estado" className="text-sm text-zinc-300">
           Estado

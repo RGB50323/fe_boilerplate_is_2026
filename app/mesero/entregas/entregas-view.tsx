@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -132,6 +133,7 @@ export function EntregasView() {
   const router = useRouter();
   const [carga, setCarga] = useState<Carga>("cargando");
   const [items, setItems] = useState<ItemPorEntregar[]>([]);
+  const [cobrables, setCobrables] = useState<Record<number, number>>({});
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const ultimaConsulta = useRef(0);
   const siguienteAviso = useRef(0);
@@ -183,6 +185,9 @@ export function EntregasView() {
 
       if ("entregado" in resultado) {
         setItems((actuales) => quitarItem(actuales, item.itemId));
+        if (resultado.entregado.pedidoEstado === "ENTREGADO") {
+          setCobrables((actuales) => ({ ...actuales, [item.pedidoId]: item.mesa }));
+        }
         avisar(
           resultado.entregado.pedidoEstado === "ENTREGADO"
             ? `Pedido de la Mesa ${item.mesa} entregado completo`
@@ -205,6 +210,18 @@ export function EntregasView() {
   return (
     <>
       <EncabezadoEntregas />
+
+      {Object.keys(cobrables).length > 0 && (
+        <ul aria-label="Pedidos entregados para cobrar" className="mb-6 flex flex-wrap gap-3">
+          {Object.entries(cobrables).map(([pedidoId, mesa]) => (
+            <li key={pedidoId}>
+              <Link href={`/mesero/pedidos/${pedidoId}/cobro`} className="text-orange-300 underline">
+                Cobrar pedido de la Mesa {mesa}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <section aria-busy={carga === "cargando"} aria-label="Platillos por entregar">
         {carga === "cargando" && <EsqueletoEntregas />}

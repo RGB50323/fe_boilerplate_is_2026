@@ -5,12 +5,22 @@ import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStor
 import { consultarPago, consultarPagoPedido, procesarPago } from "@/app/actions/pagos";
 import { obtenerPedido } from "@/app/actions/pedidos";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DescargarComprobante } from "@/components/pagos/descargar-comprobante";
 import { TarjetaSimulada, leerTarjetaSimulada } from "@/components/pagos/tarjeta-simulada";
 import { subtotalItem, type PedidoSeguimiento } from "@/lib/seguimiento";
 import type { PedidoDetalle } from "@/lib/pedidos";
 import { formatoPrecio } from "@/lib/menu";
-import { calcularCambio, construirTicket, type MetodoPago, type PedidoParaPago, type ResultadoPago, type SolicitudPago } from "@/lib/pagos";
+import {
+  calcularCambio,
+  construirTicket,
+  esCorreoLealtadValido,
+  normalizarCorreoLealtad,
+  type MetodoPago,
+  type PedidoParaPago,
+  type ResultadoPago,
+  type SolicitudPago,
+} from "@/lib/pagos";
 import type { Resultado } from "@/lib/api";
 
 type Operacion = { solicitud: SolicitudPago; resultado?: ResultadoPago };
@@ -41,11 +51,13 @@ const sinAlmacen = () => null;
 const suscribir = () => () => {};
 const errorRed = "No pudimos completar la operación. Intenta de nuevo.";
 
-function leerOperacion(valor: string | null): Operacion | null {
+function leerOperacion(valor: string | null, tipo: Props["tipo"]): Operacion | null {
   try {
     if (!valor) return null;
     const guardada = JSON.parse(valor) as Operacion;
-    return guardada?.solicitud && !guardada.resultado ? { solicitud: guardada.solicitud } : null;
+    if (!guardada?.solicitud || guardada.resultado) return null;
+    if (tipo === "LLEVAR") delete guardada.solicitud.correoLealtad;
+    return { solicitud: guardada.solicitud };
   } catch {
     return null;
   }
@@ -73,6 +85,9 @@ export function PagoPedido(props: Props) {
   const [metodo, setMetodo] = useState<MetodoPago>(tipo === "MESA" ? "EFECTIVO" : "TARJETA");
   const [monto, setMonto] = useState("");
   const montoId = useId();
+  const correoId = useId();
+  const [correo, setCorreo] = useState("");
+  const [errorCorreo, setErrorCorreo] = useState("");
   const consultaEnCurso = useRef(false);
   const conflicto = useRef(false);
   const [ocupado, setOcupado] = useState(false);
@@ -80,7 +95,7 @@ export function PagoPedido(props: Props) {
   const [error, setError] = useState("");
   const [sinSesion, setSinSesion] = useState(false);
 
-  const operacion = local === undefined ? leerOperacion(valorGuardado) : local;
+  const operacion = local === undefined ? leerOperacion(valorGuardado, tipo) : local;
   const resultado = tipo === "MESA"
     ? consultaMesa?.ok ? consultaMesa.datos : null
     : local?.resultado;
@@ -90,15 +105,26 @@ export function PagoPedido(props: Props) {
     ? resultado?.estado
     : pagoFinalH05 || local === undefined ? pagoH05 ?? resultado?.estado : resultado?.estado ?? pagoH05;
   const comprobanteId = (tipo === "LLEVAR" ? props.comprobanteId : null) ?? resultado?.comprobanteId;
-  const reintento = operacion && !operacion.resultado && (!estado || (estado === "RECHAZADO" && local !== undefined))
+  const reintento = operacion && !operacion.resultado && (!estado || (estado === "RECHAZADO" && (tipo === "MESA" || local !== undefined)))
     ? operacion.solicitud : null;
   const metodoActual = reintento?.metodo ?? metodo;
+  const intentoMesaResuelto = tipo === "MESA" &&
+    (estado === "PENDIENTE" || estado === "CONFIRMADO" || estado === "REEMBOLSADO");
   const recibido = reintento?.metodo === "EFECTIVO" ? reintento.montoRecibido : monto;
   const cambio = calcularCambio(recibido, pedido.total);
   const admitePago = !reconciliacionPendiente && (tipo === "MESA" ? consultaMesa?.ok && estadoPedido === "ENTREGADO" : estadoPedido === "PENDIENTE_PAGO")
     && (!estado || estado === "RECHAZADO");
   const transaccionId = resultado?.transaccionId;
   const consultarPendiente = estado === "PENDIENTE" && !reconciliacionPendiente;
+
+  useEffect(() => {
+    if (!intentoMesaResuelto || !valorGuardado) return;
+    try {
+      if (sessionStorage.getItem(clave) === valorGuardado) sessionStorage.removeItem(clave);
+    } catch {
+      // El estado confirmado por el servidor sigue siendo la fuente de verdad.
+    }
+  }, [clave, intentoMesaResuelto, valorGuardado]);
 
   function guardar(siguiente: Operacion | null) {
     setLocal(siguiente);
@@ -145,6 +171,10 @@ export function PagoPedido(props: Props) {
         setPedidoActual(detalle.datos);
         permiteCorregir = detalle.datos.estado === "ENTREGADO"
           && (!pago.datos || pago.datos.estado === "RECHAZADO");
+        if (!permiteCorregir) {
+          guardar(null);
+          setError("");
+        }
       }
     } else {
       const seguimiento = await props.actualizarPago();
@@ -173,6 +203,13 @@ export function PagoPedido(props: Props) {
       return;
     }
 
+    const correoNormalizado = tipo === "MESA" && !reintento ? normalizarCorreoLealtad(correo) : "";
+    if (correoNormalizado && !esCorreoLealtadValido(correoNormalizado)) {
+      setErrorCorreo("Ingresa un correo válido.");
+      return;
+    }
+    setErrorCorreo("");
+
     const tarjeta = !reintento && metodoActual === "TARJETA"
       ? leerTarjetaSimulada(evento.currentTarget)
       : null;
@@ -185,24 +222,34 @@ export function PagoPedido(props: Props) {
       const solicitud: SolicitudPago = reintento ?? {
         solicitudId: crypto.randomUUID(),
         ticket: construirTicket(pedido),
+        ...(correoNormalizado ? { correoLealtad: correoNormalizado } : {}),
         ...(tarjeta?.ok
           ? { metodo: "TARJETA", ...tarjeta.datos }
           : { metodo: "EFECTIVO", montoRecibido: monto }),
       };
       guardar({ solicitud });
-      const respuesta = await procesarPago(solicitud);
+      const respuesta: Awaited<ReturnType<typeof procesarPago>> = await procesarPago(solicitud)
+        .catch(() => ({ ok: false, error: errorRed }));
       if (!respuesta.ok) {
         if (respuesta.estado === 409) {
           conflicto.current = true;
           await reconciliar();
           return;
         }
-        if (respuesta.estado === 400 || respuesta.estado === 404) guardar(null);
+        if (respuesta.estado === 400 || respuesta.estado === 404) {
+          if (tipo === "MESA" && reintento) setCorreo(reintento.correoLealtad ?? "");
+          guardar(null);
+        }
         setError(respuesta.error);
         setSinSesion(Boolean(respuesta.sinSesion));
+        if (tipo === "MESA" && !respuesta.sinSesion &&
+          (respuesta.estado === undefined || respuesta.estado === 408 || respuesta.estado >= 500)) {
+          await reconciliar();
+        }
         return;
       }
       if (tipo === "MESA") {
+        if (reintento) setCorreo(reintento.correoLealtad ?? "");
         setPagoActual(respuesta);
         guardar(null);
       } else guardar({ solicitud, resultado: respuesta.datos });
@@ -318,6 +365,32 @@ export function PagoPedido(props: Props) {
                   <option value="TARJETA">Tarjeta simulada</option>
                 </select>
               </label>
+            )}
+            {tipo === "MESA" && (
+              <div>
+                <label htmlFor={correoId}>Correo del cliente (opcional)</label>
+                <Input
+                  id={correoId}
+                  className="mt-1"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-describedby={`${correoId}-ayuda${errorCorreo ? ` ${correoId}-error` : ""}`}
+                  aria-invalid={Boolean(errorCorreo)}
+                  value={reintento ? reintento.correoLealtad ?? "" : correo}
+                  onChange={(evento) => {
+                    setCorreo(evento.target.value);
+                    setErrorCorreo("");
+                    setError("");
+                  }}
+                />
+                <p id={`${correoId}-ayuda`} className="mt-1 text-sm text-zinc-300">
+                  Ingresa el correo de un cliente registrado para acumular puntos. Puedes dejarlo vacío para continuar sin puntos.
+                </p>
+                {errorCorreo && <p id={`${correoId}-error`} role="alert" className="mt-1 text-sm text-red-300">{errorCorreo}</p>}
+              </div>
             )}
             {metodoActual === "EFECTIVO" ? (
               <div>

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buscarPlatillosBeneficio,
+  confirmarReglaPuntos,
+  consultarReglaPuntos,
   deshabilitarBeneficio,
   guardarBeneficio,
   listarBeneficios,
@@ -49,6 +51,27 @@ afterEach(() => {
 });
 
 describe("acciones H20", () => {
+  it("consulta y confirma la regla mediante el contrato administrativo", async () => {
+    await expect(confirmarReglaPuntos(1.5)).resolves.toMatchObject({ ok: false });
+    expect(fetchApi).not.toHaveBeenCalled();
+
+    const regla = { id: 1, puntosPorDolar: 4, vigenteDesde: "2026-11-20T00:00:00.000Z" };
+    fetchApi.mockResolvedValueOnce(Response.json({ regla: null }));
+    fetchApi.mockResolvedValueOnce(Response.json({ regla }));
+
+    await expect(consultarReglaPuntos()).resolves.toEqual({ ok: true, datos: { regla: null } });
+    await expect(confirmarReglaPuntos(4)).resolves.toEqual({ ok: true, datos: { regla } });
+    expect(fetchApi.mock.calls.map(([url]) => (url as URL).pathname)).toEqual([
+      "/api/v1/reglas-puntos/vigente",
+      "/api/v1/reglas-puntos/vigente",
+    ]);
+    expect(fetchApi.mock.calls[0]?.[1]).toMatchObject({ method: "GET" });
+    expect(fetchApi.mock.calls[1]?.[1]).toMatchObject({
+      method: "PUT",
+      body: JSON.stringify({ puntosPorDolar: 4 }),
+    });
+  });
+
   it("consume los parámetros de listado, búsqueda y detalle de la API", async () => {
     fetchApi.mockImplementation(() =>
       Promise.resolve(

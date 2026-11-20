@@ -20,6 +20,7 @@ export function construirTicket(pedido: PedidoParaPago) {
 
 export type SolicitudPago = {
   solicitudId: string;
+  correoLealtad?: string;
   ticket: ReturnType<typeof construirTicket>;
 } & (
   | { metodo: "EFECTIVO"; montoRecibido: string }
@@ -37,6 +38,17 @@ export type PagoPorPedido = ResultadoPago & {
   pedidoId: number;
   metodo: string | null;
 };
+
+const MAXIMO_CORREO_LEALTAD = 254;
+const formatoCorreo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function normalizarCorreoLealtad(correo: string) {
+  return correo.trim().toLowerCase();
+}
+
+export function esCorreoLealtadValido(correo: string) {
+  return correo.length <= MAXIMO_CORREO_LEALTAD && formatoCorreo.test(correo);
+}
 
 export function calcularCambio(recibido: string, total: number): number | null {
   if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(recibido)) return null;

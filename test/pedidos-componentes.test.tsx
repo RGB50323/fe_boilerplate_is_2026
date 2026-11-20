@@ -52,6 +52,10 @@ describe("DrawerMesas", () => {
     expect(screen.getByText("Libre")).toBeInTheDocument();
     expect(screen.getByText("Ocupada")).toBeInTheDocument();
     expect(screen.getByText("Fuera de servicio")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver cobro de la Mesa 4" }))
+      .toHaveAttribute("href", "/mesero/pedidos/120/cobro");
+    expect(screen.queryByRole("link", { name: "Ver cobro de la Mesa 3" }))
+      .not.toBeInTheDocument();
   });
 
   it("permite elegir una mesa libre", () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Drawer } from "@/components/ui/drawer";
 import type { Mesa } from "@/lib/pedidos";
 
@@ -56,6 +57,14 @@ export function DrawerMesas({
                   <span className="block text-xl">Mesa {mesa.numero}</span>
                   <span className="mt-1 block text-sm">{estado}</span>
                 </button>
+                {mesa.pedidoAbiertoId !== null && (
+                  <Link
+                    href={`/mesero/pedidos/${mesa.pedidoAbiertoId}/cobro`}
+                    className="mt-2 block text-center text-sm text-orange-300 underline"
+                  >
+                    Ver cobro de la Mesa {mesa.numero}
+                  </Link>
+                )}
               </li>
             );
           })}

@@ -140,6 +140,7 @@ describe("platillos por entregar (FE-8.1)", () => {
     expect(within(mesa(2)).getByText(/Tamal de elote/)).toBeInTheDocument();
     expect(within(mesa(2)).getByText("1 por entregar")).toBeInTheDocument();
     expect(screen.getByText("Platillo entregado · Mesa 2")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Cobrar pedido/ })).not.toBeInTheDocument();
     expect(mocks.listar).toHaveBeenCalledTimes(1);
   });
 
@@ -151,6 +152,8 @@ describe("platillos por entregar (FE-8.1)", () => {
 
     expect(mesas()).toEqual(["Mesa 2"]);
     expect(screen.getByText("Pedido de la Mesa 7 entregado completo")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cobrar pedido de la Mesa 7" }))
+      .toHaveAttribute("href", "/mesero/pedidos/120/cobro");
     expect(mocks.listar).toHaveBeenCalledTimes(1);
   });
 
