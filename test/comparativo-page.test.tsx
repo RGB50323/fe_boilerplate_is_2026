@@ -23,13 +23,13 @@ vi.mock("@/app/actions/auth", () => ({ logout: mocks.logout }));
 vi.mock("@/components/notificaciones/campana-notificaciones", () => ({
   CampanaNotificaciones: () => null,
 }));
-vi.mock("@/lib/sucursales", () => ({
-  SUCURSALES: [
-    { id: 1, nombre: "Centro" },
-    { id: 2, nombre: "Escalón" },
-    { id: 3, nombre: "Santa Tecla" },
-  ],
-}));
+
+// Sucursales que la página obtiene del backend con listarSucursales().
+const sucursalesPrueba = [
+  { id: 1, nombre: "Centro" },
+  { id: 2, nombre: "Escalón" },
+  { id: 3, nombre: "Santa Tecla" },
+];
 
 const sucursales = [
   { sucursalId: 1, nombre: "Centro", ventas: 8120, pedidos: 640, ticketPromedio: 12.69 },
@@ -54,7 +54,7 @@ describe("comparativo de sucursales", () => {
 
   it("muestra el estado de carga mientras espera al backend", () => {
     mocks.consultarComparativo.mockReturnValue(new Promise(() => {}));
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     expect(screen.getByText("Cargando comparativo...")).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe("comparativo de sucursales", () => {
     mocks.params.current = new URLSearchParams(
       "periodo=rango&desde=2026-10-01&hasta=2026-10-31",
     );
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await screen.findByText("Promedio de ventas (referencia)");
     expect(mocks.consultarComparativo).toHaveBeenCalledWith({
       periodo: "rango",
@@ -72,7 +72,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("muestra lado a lado ventas, pedidos y ticket promedio de cada sucursal", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     const centro = await tarjeta("Centro");
     expect(centro.getByText("$8,120.00")).toBeInTheDocument();
     expect(valorDe(centro, "Pedidos")).toBe("640");
@@ -82,7 +82,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("muestra el promedio de ventas como referencia", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     const tarjetaPromedio = (await screen.findByText("Promedio de ventas (referencia)"))
       .parentElement!;
     expect(within(tarjetaPromedio).getByText("$5,076.83")).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("marca la sucursal más de 20 % por debajo del promedio con su diferencia", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     expect(
       await screen.findByText(/1 sucursal requiere atención:/),
     ).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("comparativo de sucursales", () => {
     mocks.consultarComparativo.mockResolvedValue({
       sucursales: sucursales.map((s) => ({ ...s, ventas: 5000 })),
     });
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     expect(
       await screen.findByText("Ninguna sucursal requiere atención en este periodo"),
     ).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("comparativo de sucursales", () => {
 
   it("solo compara las sucursales elegidas", async () => {
     mocks.params.current = new URLSearchParams("periodo=mes&sucursales=1,2");
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await tarjeta("Centro");
 
     expect(screen.queryByRole("heading", { level: 3, name: "Santa Tecla" })).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("por defecto están todas marcadas y al desmarcar una actualiza la URL", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await tarjeta("Centro");
     for (const nombre of ["Centro", "Escalón", "Santa Tecla"]) {
       expect(screen.getByRole("checkbox", { name: nombre })).toBeChecked();
@@ -144,7 +144,7 @@ describe("comparativo de sucursales", () => {
 
   it("con menos de dos sucursales pide elegir más y no genera el comparativo", () => {
     mocks.params.current = new URLSearchParams("periodo=mes&sucursales=2");
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
 
     expect(
       screen.getByText("Selecciona al menos dos sucursales para comparar"),
@@ -154,7 +154,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("no genera el comparativo con un rango con fecha final anterior a la inicial", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await tarjeta("Centro");
 
     fireEvent.click(screen.getByRole("button", { name: "Personalizado" }));
@@ -170,7 +170,7 @@ describe("comparativo de sucursales", () => {
 
   it("al cambiar el periodo conserva las sucursales elegidas", async () => {
     mocks.params.current = new URLSearchParams("periodo=mes&sucursales=1,3");
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await tarjeta("Centro");
 
     fireEvent.click(screen.getByRole("button", { name: "Semana" }));
@@ -184,7 +184,7 @@ describe("comparativo de sucursales", () => {
     mocks.consultarComparativo.mockResolvedValue({
       sucursales: sucursales.map((s) => ({ ...s, ventas: 0, pedidos: 0, ticketPromedio: 0 })),
     });
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
 
     expect(await screen.findByText("Sin ventas en el periodo seleccionado")).toBeInTheDocument();
     for (const nombre of ["Centro", "Escalón", "Santa Tecla"]) {
@@ -195,7 +195,7 @@ describe("comparativo de sucursales", () => {
   });
 
   it("la tabla de detalle se ordena al hacer clic en un encabezado", async () => {
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     const detalle = within(
       (await screen.findByRole("heading", { name: "Detalle" })).closest("section")!,
     );
@@ -217,7 +217,7 @@ describe("comparativo de sucursales", () => {
 
   it("el selector de vista lleva a la vista general con el mismo periodo", async () => {
     mocks.params.current = new URLSearchParams("periodo=semana&sucursales=1,2");
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     await tarjeta("Centro");
     expect(screen.getByRole("link", { name: "General" })).toHaveAttribute(
       "href",
@@ -230,7 +230,7 @@ describe("comparativo de sucursales", () => {
       error: "No pudimos cargar el dashboard",
       motivo: "error",
     });
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     expect(await screen.findByText("No pudimos cargar el dashboard")).toBeInTheDocument();
 
     mocks.consultarComparativo.mockResolvedValue({ sucursales });
@@ -243,11 +243,76 @@ describe("comparativo de sucursales", () => {
       error: "No tenés acceso al dashboard de ventas.",
       motivo: "sin-acceso",
     });
-    render(<ComparativoView />);
+    render(<ComparativoView sucursales={sucursalesPrueba} />);
     expect(
       await screen.findByText("No tenés acceso al dashboard de ventas."),
     ).toBeInTheDocument();
     expect(screen.queryByText("Promedio de ventas (referencia)")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+  });
+
+  describe("con sucursales del backend que no están en los datos fijos", () => {
+    const nuevas = [
+      { id: 7, nombre: "Soyapango" },
+      { id: 12, nombre: "Santa Ana" },
+      { id: 25, nombre: "San Miguel" },
+    ];
+    const ventasNuevas = [
+      { sucursalId: 7, nombre: "Soyapango", ventas: 9000, pedidos: 600, ticketPromedio: 15 },
+      { sucursalId: 12, nombre: "Santa Ana", ventas: 6000, pedidos: 500, ticketPromedio: 12 },
+      { sucursalId: 25, nombre: "San Miguel", ventas: 3000, pedidos: 250, ticketPromedio: 12 },
+    ];
+
+    beforeEach(() => {
+      mocks.consultarComparativo.mockResolvedValue({ sucursales: ventasNuevas });
+    });
+
+    it("las muestra para elegir y todas participan en el comparativo", async () => {
+      render(<ComparativoView sucursales={nuevas} />);
+      await tarjeta("Soyapango");
+
+      for (const { nombre } of nuevas) {
+        expect(screen.getByRole("checkbox", { name: nombre })).toBeChecked();
+        expect(await tarjeta(nombre)).toBeTruthy();
+      }
+      expect(screen.queryByRole("checkbox", { name: "Centro" })).not.toBeInTheDocument();
+      expect(screen.getByText("Promedio de las 3 sucursales comparadas")).toBeInTheDocument();
+      expect(screen.getByText(/San Miguel tiene ventas 50\.0 % por debajo/)).toBeInTheDocument();
+    });
+
+    it("al desmarcar una guarda en la URL los IDs del backend", async () => {
+      render(<ComparativoView sucursales={nuevas} />);
+      await tarjeta("Soyapango");
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Santa Ana" }));
+      expect(mocks.router.replace).toHaveBeenCalledWith(
+        "/dashboard/comparativo?periodo=mes&sucursales=7%2C25",
+        { scroll: false },
+      );
+    });
+
+    it("descarta de la URL los IDs que el backend no devolvió", async () => {
+      mocks.params.current = new URLSearchParams("periodo=mes&sucursales=7,25,1");
+      render(<ComparativoView sucursales={nuevas} />);
+      await tarjeta("Soyapango");
+
+      expect(screen.getByText("Promedio de las 2 sucursales comparadas")).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Santa Ana" })).not.toBeChecked();
+      expect(
+        screen.queryByRole("heading", { level: 3, name: "Santa Ana" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("al volver a marcar todas compara todas sin listar IDs en la URL", async () => {
+      mocks.params.current = new URLSearchParams("periodo=mes&sucursales=7,25");
+      render(<ComparativoView sucursales={nuevas} />);
+      await tarjeta("Soyapango");
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "Santa Ana" }));
+      expect(mocks.router.replace).toHaveBeenCalledWith(
+        "/dashboard/comparativo?periodo=mes",
+        { scroll: false },
+      );
+    });
   });
 });

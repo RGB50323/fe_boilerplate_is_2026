@@ -32,7 +32,7 @@ import {
   type FiltrosComparativo,
 } from "@/lib/comparativo";
 import { formatoEntero, formatoMoneda, periodoAQuery } from "@/lib/dashboard";
-import { SUCURSALES } from "@/lib/sucursales";
+import type { Sucursal } from "@/lib/menu";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -40,20 +40,23 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-const IDS = SUCURSALES.map((s) => s.id);
 const MENSAJE_MINIMO = "Selecciona al menos dos sucursales para comparar";
 
 type Resultado = { clave: string; respuesta: ResultadoComparativo };
 
-function filtrosDe(qs: string): FiltrosComparativo {
-  return comparativoDesdeParams(Object.fromEntries(new URLSearchParams(qs)), IDS);
+function filtrosDe(qs: string, ids: number[]): FiltrosComparativo {
+  return comparativoDesdeParams(Object.fromEntries(new URLSearchParams(qs)), ids);
 }
 
-function Comparar() {
+// Sucursales del backend (listarSucursales en comparativo/page.tsx).
+function Comparar({ sucursales }: { sucursales: Sucursal[] }) {
   const router = useRouter();
   const qs = useSearchParams().toString();
-  const filtros = useMemo(() => filtrosDe(qs), [qs]);
-  const elegidas = sucursalesElegidas(filtros, IDS);
+  // Los IDs del backend definen la selección, la validación de la URL
+  // (se descartan IDs desconocidos) y "todas" (sin parámetro = todas).
+  const ids = useMemo(() => sucursales.map((s) => s.id), [sucursales]);
+  const filtros = useMemo(() => filtrosDe(qs, ids), [qs, ids]);
+  const elegidas = sucursalesElegidas(filtros, ids);
   const suficientes = elegidas.length >= MINIMO_SUCURSALES;
 
 
@@ -67,14 +70,14 @@ function Comparar() {
   useEffect(() => {
     if (!suficientes) return;
     let activo = true;
-    const { periodo, desde, hasta } = filtrosDe(qs);
+    const { periodo, desde, hasta } = filtrosDe(qs, ids);
     consultarComparativo({ periodo, desde, hasta }).then((r) => {
       if (activo) setResultado({ clave: `${periodoAQuery({ periodo, desde, hasta })}#${reintento}`, respuesta: r });
     });
     return () => {
       activo = false;
     };
-  }, [qs, reintento, suficientes]);
+  }, [qs, ids, reintento, suficientes]);
 
   function navegar(siguiente: FiltrosComparativo) {
     router.replace(`/dashboard/comparativo?${comparativoAQuery(siguiente)}`, { scroll: false });
@@ -105,7 +108,7 @@ function Comparar() {
       <fieldset className="mt-4 rounded-2xl bg-[#2b2b2f] p-4 font-sans sm:px-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
           <legend className="float-left mr-1 text-sm text-zinc-400">Sucursales a comparar</legend>
-          {SUCURSALES.map((s) => {
+          {sucursales.map((s) => {
             const marcada = elegidas.includes(s.id);
             return (
               <label
@@ -115,7 +118,7 @@ function Comparar() {
                 <input
                   type="checkbox"
                   checked={marcada}
-                  onChange={() => navegar(alternarSucursal(filtros, s.id, IDS))}
+                  onChange={() => navegar(alternarSucursal(filtros, s.id, ids))}
                   className="size-4 cursor-pointer accent-[#FF7A1A] focus-visible:outline-none"
                 />
                 {s.nombre}
@@ -319,13 +322,13 @@ function Contenido({ comparativo }: { comparativo: Comparativo }) {
   );
 }
 
-export function ComparativoView() {
+export function ComparativoView({ sucursales }: { sucursales: Sucursal[] }) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-2 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando comparativo..." />}>
-        <Comparar />
+        <Comparar sucursales={sucursales} />
       </Suspense>
     </main>
   );

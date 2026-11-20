@@ -41,7 +41,7 @@ import {
   type DashboardRespuesta,
   type FiltrosDashboard,
 } from "@/lib/dashboard";
-import { SUCURSALES } from "@/lib/sucursales";
+import type { Sucursal } from "@/lib/menu";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -62,7 +62,8 @@ function filtrosDe(qs: string): FiltrosDashboard {
   return filtrosDesdeParams(Object.fromEntries(new URLSearchParams(qs)));
 }
 
-function Dashboard() {
+// Sucursales del backend (listarSucursales en app/dashboard/page.tsx).
+function Dashboard({ sucursales }: { sucursales: Sucursal[] }) {
   const router = useRouter();
   const qs = useSearchParams().toString();
   const filtros = useMemo(() => filtrosDe(qs), [qs]);
@@ -175,7 +176,7 @@ function Dashboard() {
             value={filtros.sucursalId}
             placeholder="Todas"
             onChange={(sucursalId) => navegar({ ...filtros, sucursalId })}
-            opciones={SUCURSALES.map((s) => ({ value: s.id, label: s.nombre }))}
+            opciones={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
           />
         }
         acciones={
@@ -504,13 +505,13 @@ function Contenido({
   );
 }
 
-export function DashboardView() {
+export function DashboardView({ sucursales }: { sucursales: Sucursal[] }) {
   return (
     <main
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-2 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
     >
       <Suspense fallback={<PageLoading mensaje="Cargando dashboard..." />}>
-        <Dashboard />
+        <Dashboard sucursales={sucursales} />
       </Suspense>
     </main>
   );
