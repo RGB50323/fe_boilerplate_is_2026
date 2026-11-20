@@ -14,6 +14,7 @@ import {
   type ErroresBeneficio,
 } from "@/lib/beneficios";
 import { LOGIN_BENEFICIOS } from "@/lib/roles";
+import { fechaLocal } from "@/lib/reservaciones";
 import { SelectorPlatillo } from "./selector-platillo";
 
 type Fallo = Extract<Resultado<never>, { ok: false }>;
@@ -40,6 +41,9 @@ export function FormularioBeneficio({ beneficio, onCerrar, onGuardar }: Props) {
   const [fallo, setFallo] = useState<Fallo>();
   const [guardando, setGuardando] = useState(false);
   const envio = useRef(false);
+  const minimoInicio = beneficio ? "0001-01-01" : fechaLocal();
+  const minimoFin =
+    campos.vigenteDesde > minimoInicio ? campos.vigenteDesde : minimoInicio;
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -49,7 +53,10 @@ export function FormularioBeneficio({ beneficio, onCerrar, onGuardar }: Props) {
       costoPuntos: Number(campos.costoPuntos),
       platilloId: platillo?.id ?? 0,
     };
-    const validacion = validarBeneficio(datos);
+    const validacion = validarBeneficio(
+      datos,
+      beneficio ? undefined : fechaLocal(),
+    );
     setFallo(undefined);
     setErrores(validacion);
     const primerError = Object.keys(validacion)[0];
@@ -115,7 +122,13 @@ export function FormularioBeneficio({ beneficio, onCerrar, onGuardar }: Props) {
               setCampos((actual) => ({ ...actual, [nombre]: valor }));
               setErrores((actual) => ({ ...actual, [nombre]: undefined }));
             }}
-            min={tipo === "number" ? 1 : "0001-01-01"}
+            min={
+              tipo === "number"
+                ? 1
+                : nombre === "vigenteDesde"
+                  ? minimoInicio
+                  : minimoFin
+            }
             max={tipo === "number" ? MAXIMO_PUNTOS : "9999-12-31"}
             step={tipo === "number" ? 1 : undefined}
             disabled={guardando}

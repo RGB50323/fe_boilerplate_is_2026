@@ -9,6 +9,7 @@ import {
   type PlatilloBeneficio,
 } from "@/lib/beneficios";
 import type { Pagina } from "@/lib/paginacion";
+import { fechaLocal } from "@/lib/reservaciones";
 
 const MENSAJES = {
   400: "Revisa los datos de la solicitud.",
@@ -59,7 +60,10 @@ export async function buscarPlatillosBeneficio(pagina: number, buscar: string) {
 export async function guardarBeneficio(datos: DatosBeneficio, id?: number) {
   const { platilloId, costoPuntos, vigenteDesde, vigenteHasta } = datos;
   const cuerpo = { platilloId, costoPuntos, vigenteDesde, vigenteHasta };
-  const errores = validarBeneficio(cuerpo);
+  const errores = validarBeneficio(
+    cuerpo,
+    id === undefined ? fechaLocal() : undefined,
+  );
   if (Object.keys(errores).length) {
     return { ok: false, estado: 400, error: MENSAJES[400], errores } as const;
   }

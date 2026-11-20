@@ -7,6 +7,7 @@ import {
   obtenerBeneficio,
 } from "@/app/actions/beneficios";
 import { validarBeneficio } from "@/lib/beneficios";
+import { fechaLocal } from "@/lib/reservaciones";
 import { retornoLogin } from "@/lib/retorno-login";
 import { rolesRequeridosPara } from "@/lib/roles";
 
@@ -33,6 +34,7 @@ const respuesta = {
 const fetchApi = vi.fn();
 
 beforeEach(() => {
+  vi.setSystemTime(new Date("2026-11-26T05:59:59Z"));
   vi.stubEnv("API_URL", "http://localhost:3000/api/v1");
   vi.stubGlobal("fetch", fetchApi);
   fetchApi.mockReset();
@@ -40,6 +42,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -137,12 +140,42 @@ describe("acciones H20", () => {
       error: expect.stringContaining("conectar"),
     });
   });
+
+  it("rechaza un alta anterior al día local y admite ese inicio al editar", async () => {
+    const pasado = { ...datos, vigenteDesde: "2026-11-24" };
+    await expect(guardarBeneficio(pasado)).resolves.toMatchObject({
+      ok: false,
+      estado: 400,
+      errores: { vigenteDesde: expect.stringContaining("El Salvador") },
+    });
+    expect(fetchApi).not.toHaveBeenCalled();
+    fetchApi.mockResolvedValueOnce(Response.json(respuesta));
+    await expect(guardarBeneficio(pasado, 9)).resolves.toMatchObject({
+      ok: true,
+    });
+  });
 });
 
 it.each([0, -5, 1.2, 2_147_483_648])("valida el costo %s", (costoPuntos) => {
-  expect(validarBeneficio({ ...datos, costoPuntos })).toHaveProperty(
-    "costoPuntos",
+  expect(validarBeneficio({ ...datos, costoPuntos }).costoPuntos).toBe(
+    "Ingresa una cantidad de puntos válida y mayor que cero.",
   );
+});
+
+it("usa el cambio de día de El Salvador y permite hoy y fechas futuras", () => {
+  expect(fechaLocal()).toBe("2026-11-25");
+  expect(fechaLocal(new Date("2026-11-26T06:00:00Z"))).toBe("2026-11-26");
+  expect(validarBeneficio(datos, fechaLocal())).toEqual({});
+  expect(
+    validarBeneficio(
+      {
+        ...datos,
+        vigenteDesde: "2026-11-27",
+        vigenteHasta: "2026-11-27",
+      },
+      fechaLocal(),
+    ),
+  ).toEqual({});
 });
 
 it("valida fechas faltantes, inexistentes e invertidas y admite el mismo día", () => {

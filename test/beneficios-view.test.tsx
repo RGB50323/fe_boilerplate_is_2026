@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import BeneficiosPage from "@/app/admin/beneficios/page";
 import { BeneficiosView } from "@/app/admin/beneficios/beneficios-view";
 import type { Resultado } from "@/lib/api";
@@ -88,6 +88,7 @@ const boton = (nombre: string) =>
 const campo = (nombre: RegExp) => dialogo().getByLabelText(nombre);
 
 beforeEach(() => {
+  vi.setSystemTime(new Date("2026-11-26T05:59:59Z"));
   vi.resetAllMocks();
   redirect.mockImplementation((ruta) => {
     throw new Error(ruta);
@@ -100,6 +101,68 @@ beforeEach(() => {
     ok: true,
     datos: historico,
   });
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("aplica los mínimos de alta y valida el orden incluso si se eluden los atributos HTML", async () => {
+  render(<BeneficiosView inicial={pagina([])} />);
+  fireEvent.click(screen.getByRole("button", { name: "Agregar beneficio" }));
+  fireEvent.click(
+    await dialogo().findByRole("button", { name: /Hamburguesa clásica/ }),
+  );
+  const inicio = campo(/Vigencia desde/);
+  const fin = campo(/Vigencia hasta/);
+  expect(inicio).toHaveAttribute("min", "2026-11-25");
+  expect(fin).toHaveAttribute("min", "2026-11-25");
+  fireEvent.change(campo(/Costo en puntos/), { target: { value: "150" } });
+  fireEvent.change(inicio, { target: { value: "2026-11-24" } });
+  fireEvent.change(fin, { target: { value: "2026-11-25" } });
+  fireEvent.click(boton("Guardar beneficio"));
+  expect(inicio).toHaveAccessibleDescription(
+    /anterior al día actual de El Salvador/,
+  );
+  expect(acciones.guardarBeneficio).not.toHaveBeenCalled();
+  fireEvent.change(inicio, { target: { value: "2026-11-27" } });
+  expect(fin).toHaveAttribute("min", "2026-11-27");
+  fireEvent.click(boton("Guardar beneficio"));
+  expect(fin).toHaveAccessibleDescription(
+    "La fecha final no puede ser anterior a la inicial.",
+  );
+  expect(acciones.guardarBeneficio).not.toHaveBeenCalled();
+  fireEvent.change(fin, { target: { value: "2026-11-27" } });
+  fireEvent.click(boton("Guardar beneficio"));
+  await waitFor(() =>
+    expect(acciones.guardarBeneficio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vigenteDesde: "2026-11-27",
+        vigenteHasta: "2026-11-27",
+      }),
+      undefined,
+    ),
+  );
+});
+
+it("permite cambiar costo y platillo de un beneficio que inició en el pasado", async () => {
+  const iniciado = { ...vigente, vigenteDesde: "2026-11-24" };
+  acciones.obtenerBeneficio.mockResolvedValue({ ok: true, datos: iniciado });
+  acciones.buscarPlatillosBeneficio.mockResolvedValue(pagina([otro]));
+  render(<BeneficiosView inicial={pagina([iniciado])} />);
+  fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+  fireEvent.click(await dialogo().findByRole("button", { name: "Ensalada" }));
+  expect(campo(/Vigencia hasta/)).toHaveAttribute("min", "2026-11-24");
+  fireEvent.change(campo(/Costo en puntos/), { target: { value: "200" } });
+  fireEvent.click(boton("Guardar beneficio"));
+  await waitFor(() =>
+    expect(acciones.guardarBeneficio).toHaveBeenCalledWith(
+      expect.objectContaining({
+        platilloId: 20,
+        costoPuntos: 200,
+        vigenteDesde: "2026-11-24",
+      }),
+      9,
+    ),
+  );
 });
 
 it.each(["GERENTE", "GERENTE_GENERAL"])(
@@ -208,7 +271,11 @@ it("crea con días iguales, aplica búsqueda paginada y mantiene el platillo sel
   expect(sugerido).toHaveAttribute("aria-pressed", "false");
   fireEvent.click(sugerido);
   fireEvent.click(boton("Guardar beneficio"));
-  expect(dialogo().getByText(/Ingresa un entero/)).toBeVisible();
+  expect(
+    dialogo().getByText(
+      "Ingresa una cantidad de puntos válida y mayor que cero.",
+    ),
+  ).toBeVisible();
   expect(
     dialogo().getByText("Ingresa una fecha de inicio válida."),
   ).toBeVisible();
@@ -373,15 +440,19 @@ it("bloquea un segundo guardado mientras espera y ofrece volver a iniciar sesió
   acciones.guardarBeneficio.mockReturnValueOnce(pendiente);
   render(<BeneficiosView inicial={pagina([vigente])} />);
   fireEvent.click(screen.getByRole("button", { name: "Editar" }));
-  fireEvent.click(await dialogo().findByRole("button", { name: "Guardar beneficio" }));
+  fireEvent.click(
+    await dialogo().findByRole("button", { name: "Guardar beneficio" }),
+  );
   const guardando = boton("Guardando…");
   expect(guardando).toBeDisabled();
   expect(boton("Cancelar")).toBeDisabled();
   fireEvent.click(guardando);
   expect(acciones.guardarBeneficio).toHaveBeenCalledTimes(1);
-  await act(async () => resolver({ ok: false, sinSesion: true, error: "Tu sesión expiró." }));
-  expect(dialogo().getByRole("alert")).toHaveTextContent("Tu sesión expiró.");
-  expect(dialogo().getByRole("link", { name: "Iniciar sesión" })).toHaveAttribute(
-    "href", "/login?next=%2Fadmin%2Fbeneficios",
+  await act(async () =>
+    resolver({ ok: false, sinSesion: true, error: "Tu sesión expiró." }),
   );
+  expect(dialogo().getByRole("alert")).toHaveTextContent("Tu sesión expiró.");
+  expect(
+    dialogo().getByRole("link", { name: "Iniciar sesión" }),
+  ).toHaveAttribute("href", "/login?next=%2Fadmin%2Fbeneficios");
 });
