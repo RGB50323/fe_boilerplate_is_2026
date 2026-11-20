@@ -1,7 +1,5 @@
 import { formatoEntero, type PlatilloVendido } from "@/lib/dashboard";
 
-// Barras horizontales con la cantidad vendida de cada platillo, en el mismo
-// orden que la tabla. Un solo color: el ranking ya lo da la posición.
 export function GraficoPlatillos({ platillos }: { platillos: PlatilloVendido[] }) {
   const maximo = Math.max(1, ...platillos.map((p) => p.cantidad));
 

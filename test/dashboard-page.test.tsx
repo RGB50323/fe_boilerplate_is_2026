@@ -33,7 +33,6 @@ const platillos = Array.from({ length: 12 }, (_, i) => ({
   cantidad: 100 - i * 5,
   monto: 500 - i * 20,
 }));
-// Empate en cantidad con el primero: debe ir después por generar menos dinero.
 platillos.push({ platilloId: 99, nombre: "Empate barato", cantidad: 100, monto: 100 });
 
 const dashboard: DashboardRespuesta = {
@@ -234,6 +233,28 @@ describe("dashboard de ventas", () => {
 
       await elegir("Sucursal", "Santa Tecla");
       expect(mocks.router.replace).toHaveBeenCalledWith("/dashboard?periodo=hoy&sucursal=2", {
+        scroll: false,
+      });
+    });
+
+    it("el filtro de sucursal usa las sucursales del backend aunque no estén en los datos fijos", async () => {
+      mocks.params.current = new URLSearchParams("periodo=hoy");
+      render(
+        <DashboardView
+          sucursales={[
+            { id: 42, nombre: "Antiguo Cuscatlán" },
+            { id: 57, nombre: "Lourdes" },
+          ]}
+        />,
+      );
+      await screen.findByText("Ventas totales");
+
+      fireEvent.click(screen.getByRole("combobox", { name: "Sucursal" }));
+      expect(await screen.findByRole("option", { name: "Lourdes" })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: "Escalón" })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("option", { name: "Antiguo Cuscatlán" }));
+      expect(mocks.router.replace).toHaveBeenCalledWith("/dashboard?periodo=hoy&sucursal=42", {
         scroll: false,
       });
     });

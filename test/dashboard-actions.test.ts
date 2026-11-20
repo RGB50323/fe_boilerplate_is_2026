@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { consultarDashboard, consultarVentas } from "@/app/actions/dashboard";
+import {
+  consultarComparativo,
+  consultarDashboard,
+  consultarVentas,
+} from "@/app/actions/dashboard";
 import { GET as exportar } from "@/app/dashboard/exportar/route";
 import { FILTROS_INICIALES } from "@/lib/dashboard";
 
@@ -208,5 +212,46 @@ describe("GET /dashboard/exportar", () => {
     expect(lineas).toHaveLength(3);
     expect(lineas[2]).toMatch(/^Total general,/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("consultarComparativo", () => {
+  it("usa el mismo endpoint que H28, con todas las sucursales y sin día", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        ...respuestaApi,
+        sucursales: [{ sucursalId: 1, nombre: "Centro", ventas: 10, pedidos: 1, ticketPromedio: 10 }],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const r = await consultarComparativo({
+      periodo: "rango",
+      desde: "2026-10-01",
+      hasta: "2026-10-31",
+    });
+
+    expect(r).toEqual({
+      sucursales: [{ sucursalId: 1, nombre: "Centro", ventas: 10, pedidos: 1, ticketPromedio: 10 }],
+    });
+    expect(String(fetchMock.mock.calls[0][0])).toBe(
+      "http://api.test/api/v1/dashboard/ventas?desde=2026-10-01&hasta=2026-10-31",
+    );
+  });
+
+  it("no consulta si el usuario no es gerente general", async () => {
+    mocks.getUsuarioActual.mockResolvedValue(mesero);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(
+      await consultarComparativo({ periodo: "mes", desde: "", hasta: "" }),
+    ).toMatchObject({ motivo: "sin-acceso" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un rango con fecha final anterior a la inicial", async () => {
+    expect(
+      await consultarComparativo({ periodo: "rango", desde: "2026-10-31", hasta: "2026-10-01" }),
+    ).toMatchObject({ motivo: "rango-invalido" });
   });
 });

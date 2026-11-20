@@ -1,20 +1,13 @@
 import { fechaLocal, fechaValida } from "@/lib/reservaciones";
 
-// ---------------------------------------------------------------------------
-// Tipos que devuelve el backend (contrato propuesto para GET /dashboard/ventas)
-// ---------------------------------------------------------------------------
-
-// Ventas = subtotal - descuentos, sin IVA ni propina, solo pedidos con pago
-// confirmado y sin reembolso (criterio 2). Eso lo calcula el backend.
 export type VentasSucursal = {
   sucursalId: number;
   nombre: string;
   ventas: number;
   pedidos: number;
-  ticketPromedio: number; // ventas / pedidos, 2 decimales; 0 sin pedidos (lo calcula el backend)
+  ticketPromedio: number;
 };
 
-// Totales de la selección (todas las sucursales o la elegida), del backend.
 export type TotalGeneral = {
   ventas: number;
   pedidos: number;
@@ -28,7 +21,7 @@ export type PlatilloVendido = {
   monto: number;
 };
 
-// hora = inicio de la franja de 1 hora (12 => 12:00 a 13:00).
+
 export type FranjaHoraria = { hora: number; ventas: number };
 
 export type HorarioPicoSucursal = {
@@ -46,9 +39,6 @@ export type DashboardRespuesta = {
   horariosPico: HorarioPicoSucursal[];
 };
 
-// ---------------------------------------------------------------------------
-// Filtros
-// ---------------------------------------------------------------------------
 
 export type Periodo = "hoy" | "semana" | "mes" | "rango";
 
@@ -59,7 +49,6 @@ export const PERIODOS: { value: Periodo; label: string }[] = [
   { value: "rango", label: "Personalizado" },
 ];
 
-// diaSemana usa la misma convención que HorarioSucursal: 0 = domingo.
 export const DIAS_SEMANA: { value: number; label: string }[] = [
   { value: 1, label: "Lunes" },
   { value: 2, label: "Martes" },
@@ -72,11 +61,14 @@ export const DIAS_SEMANA: { value: number; label: string }[] = [
 
 export type FiltrosDashboard = {
   periodo: Periodo;
-  desde: string; // solo para periodo "rango"
-  hasta: string; // solo para periodo "rango"
-  sucursalId: string; // "" = Todas
-  dia: string; // "" = todos los días (solo afecta horarios pico)
+  desde: string; 
+  hasta: string; 
+  sucursalId: string; 
+  dia: string; 
 };
+
+
+export type FiltrosPeriodo = Pick<FiltrosDashboard, "periodo" | "desde" | "hasta">;
 
 export const FILTROS_INICIALES: FiltrosDashboard = {
   periodo: "mes",
@@ -119,6 +111,10 @@ export function filtrosDesdeParams(p: Params): FiltrosDashboard {
   };
 }
 
+export function periodoAQuery(f: FiltrosPeriodo): string {
+  return filtrosAQuery({ ...f, sucursalId: "", dia: "" });
+}
+
 export function filtrosAQuery(f: FiltrosDashboard): string {
   const qs = new URLSearchParams();
   qs.set("periodo", f.periodo);
@@ -137,10 +133,8 @@ function sumarDias(fecha: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Traduce el periodo a fechas concretas (zona horaria del restaurante).
-// La semana empieza el lunes.
 export function rangoDelPeriodo(
-  f: FiltrosDashboard,
+  f: FiltrosPeriodo,
   ahora = new Date(),
 ): { desde: string; hasta: string } {
   const hoy = fechaLocal(ahora);
@@ -158,13 +152,8 @@ export function rangoDelPeriodo(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Cálculos
-// ---------------------------------------------------------------------------
-
 const redondear = (n: number) => Math.round(n * 100) / 100;
 
-// Criterios 3 y 4: ventas / pedidos a dos decimales; $0.00 sin pedidos.
 export function ticketPromedio(ventas: number, pedidos: number): number {
   if (pedidos <= 0) return 0;
   return Math.round((ventas * 100) / pedidos) / 100;
@@ -176,7 +165,6 @@ export function resumenGeneral(sucursales: Pick<VentasSucursal, "ventas" | "pedi
   return { ventas, pedidos, ticket: ticketPromedio(ventas, pedidos) };
 }
 
-// Criterios 8 y 9: mayor cantidad primero; si empatan, el que generó más.
 export function ordenarPlatillos(platillos: PlatilloVendido[]): PlatilloVendido[] {
   return [...platillos].sort(
     (a, b) =>
@@ -186,7 +174,6 @@ export function ordenarPlatillos(platillos: PlatilloVendido[]): PlatilloVendido[
   );
 }
 
-// Criterios 10 y 11: las 3 franjas con más ventas; si empatan, la más temprana.
 export function franjasPico(franjas: FranjaHoraria[], cuantas = 3): number[] {
   return [...franjas]
     .filter((f) => f.ventas > 0)
@@ -214,10 +201,6 @@ export function formatoEntero(n: number): string {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
-// ---------------------------------------------------------------------------
-// Ventas confirmadas (lista detallada y CSV, criterio 14)
-// ---------------------------------------------------------------------------
-
 export type TipoPedido = "MESA" | "LLEVAR";
 
 export const TIPOS_PEDIDO: Record<TipoPedido, string> = {
@@ -225,18 +208,17 @@ export const TIPOS_PEDIDO: Record<TipoPedido, string> = {
   LLEVAR: "Para llevar",
 };
 
-// Una fila por pedido que cuenta como venta: pago confirmado y sin reembolso.
 export type VentaConfirmada = {
   pedidoId: number;
   numero: string | null;
   sucursalId: number;
   sucursal: string;
-  fecha: string; // ISO en UTC: momento en que se confirmó el pago
+  fecha: string; 
   tipo: TipoPedido;
   articulos: number;
   subtotal: number;
   descuentos: number;
-  venta: number; // subtotal - descuentos
+  venta: number;
 };
 
 export type VentasPagina = {
@@ -263,13 +245,11 @@ const formatoHoraLocal = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 });
 
-// "2026-11-08T20:35:00Z" -> { fecha: "08/11/2026", hora: "14:35" } (hora de El Salvador)
 export function fechaHoraLocal(iso: string): { fecha: string; hora: string } {
   const d = new Date(iso);
   return { fecha: formatoFechaLocal.format(d), hora: formatoHoraLocal.format(d) };
 }
 
-// "2026-11-01" -> "01/11/2026"
 export function formatoFechaCorta(fecha: string): string {
   const [a, m, d] = fecha.split("-");
   return a && m && d ? `${d}/${m}/${a}` : fecha;
@@ -286,9 +266,7 @@ function celdaCsv(valor: string | number): string {
 
 export const ENCABEZADO_CSV_SUCURSALES = ["Sucursal", "Ventas", "Pedidos", "Ticket promedio"];
 
-// Criterio 14: el CSV coincide con la tabla "Ventas por sucursal": una fila por
-// sucursal y la fila "Total general". Mismo formato que devuelve
-// GET /dashboard/ventas/exportar del backend.
+
 export function generarCsvSucursales(
   datos: Pick<DashboardRespuesta, "sucursales" | "totalGeneral">,
 ): string {
@@ -300,7 +278,9 @@ export function generarCsvSucursales(
   ];
   return [
     ENCABEZADO_CSV_SUCURSALES,
-    ...datos.sucursales.map((s) => fila(s.nombre, s)),
+    ...[...datos.sucursales]
+      .sort((a, b) => b.ventas - a.ventas || a.nombre.localeCompare(b.nombre, "es"))
+      .map((s) => fila(s.nombre, s)),
     fila("Total general", datos.totalGeneral),
   ]
     .map((f) => f.map(celdaCsv).join(","))

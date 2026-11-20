@@ -3,7 +3,9 @@
 import type {
   DashboardRespuesta,
   FiltrosDashboard,
+  FiltrosPeriodo,
   VentasPagina,
+  VentasSucursal,
 } from "@/lib/dashboard";
 import { VENTAS_POR_PAGINA } from "@/lib/dashboard";
 import {
@@ -78,4 +80,18 @@ export async function consultarVentas(
   } catch {
     return { error: ERROR_GENERAL, motivo: "error" };
   }
+}
+
+export type ResultadoComparativo =
+  | { sucursales: VentasSucursal[]; error?: undefined }
+  | ({ sucursales?: undefined } & ErrorDashboard);
+
+export async function consultarComparativo(
+  periodo: FiltrosPeriodo,
+): Promise<ResultadoComparativo> {
+  const resultado = await consultarDashboard({ ...periodo, sucursalId: "", dia: "" });
+  if (resultado.error !== undefined) {
+    return { error: resultado.error, motivo: resultado.motivo };
+  }
+  return { sucursales: resultado.dashboard.sucursales };
 }

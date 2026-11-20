@@ -32,7 +32,6 @@ export function esError(x: unknown): x is ErrorDashboard {
   return typeof x === "object" && x !== null && "motivo" in x && "error" in x;
 }
 
-// Valida el rango y verifica el rol (criterio 15) antes de pedir cualquier dato.
 export async function prepararConsulta(
   filtros: FiltrosDashboard,
 ): Promise<ConsultaDashboard | ErrorDashboard> {
@@ -61,8 +60,6 @@ export async function prepararConsulta(
   };
 }
 
-// GET {API_URL}/{ruta}?params con el token del usuario. Traduce 401/403 y
-// cualquier otro error a un ErrorDashboard.
 export async function pedirApi(
   ruta: string,
   params: Record<string, string | number | undefined>,
