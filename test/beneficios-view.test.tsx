@@ -15,6 +15,7 @@ import type { Pagina } from "@/lib/paginacion";
 
 const acciones = vi.hoisted(() => ({
   listarBeneficios: vi.fn(),
+  consultarReglaPuntos: vi.fn(),
   obtenerBeneficio: vi.fn(),
   buscarPlatillosBeneficio: vi.fn(),
   guardarBeneficio: vi.fn(),
@@ -94,6 +95,7 @@ beforeEach(() => {
     throw new Error(ruta);
   });
   acciones.listarBeneficios.mockResolvedValue(pagina([vigente]));
+  acciones.consultarReglaPuntos.mockResolvedValue({ ok: true, datos: { regla: null } });
   acciones.obtenerBeneficio.mockResolvedValue({ ok: true, datos: vigente });
   acciones.buscarPlatillosBeneficio.mockResolvedValue(pagina([plato]));
   acciones.guardarBeneficio.mockResolvedValue({ ok: true, datos: vigente });

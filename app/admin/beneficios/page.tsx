@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { listarBeneficios } from "@/app/actions/beneficios";
+import { consultarReglaPuntos, listarBeneficios } from "@/app/actions/beneficios";
 import { PanelGerente } from "@/components/admin/panel-gerente";
+import { ReglaAcumulacion } from "@/components/beneficios/regla-acumulacion";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   ENLACE_BENEFICIOS,
@@ -33,10 +34,10 @@ export default async function BeneficiosPage() {
   }
   if (!ROLES_BENEFICIOS.includes(acceso.usuario.rol)) redirect("/menu");
 
-  const inicial = await listarBeneficios();
+  const [inicial, regla] = await Promise.all([listarBeneficios(), consultarReglaPuntos()]);
   return (
     <PanelGerente gerenteGeneral={acceso.usuario.rol === "GERENTE_GENERAL"}>
-      <BeneficiosView inicial={inicial} />
+      <BeneficiosView inicial={inicial} reglaAcumulacion={<ReglaAcumulacion inicial={regla} />} />
     </PanelGerente>
   );
 }

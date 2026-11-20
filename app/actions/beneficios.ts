@@ -88,3 +88,23 @@ export async function deshabilitarBeneficio(id: number) {
     metodo: "PATCH",
   });
 }
+
+export type ReglaPuntos = {
+  id: number;
+  puntosPorDolar: number;
+  vigenteDesde: string;
+};
+
+export async function consultarReglaPuntos() {
+  return solicitar<{ regla: ReglaPuntos | null }>("reglas-puntos/vigente");
+}
+
+export async function confirmarReglaPuntos(puntosPorDolar: number) {
+  if (!Number.isInteger(puntosPorDolar) || puntosPorDolar < 1 || puntosPorDolar > 10) {
+    return { ok: false, estado: 400, error: "Ingresa un número entero del 1 al 10." } as const;
+  }
+  return solicitar<{ regla: ReglaPuntos }>("reglas-puntos/vigente", {
+    metodo: "PUT",
+    cuerpo: { puntosPorDolar },
+  });
+}
