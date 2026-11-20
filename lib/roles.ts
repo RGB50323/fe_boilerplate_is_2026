@@ -61,6 +61,22 @@ export function tieneRolPermitido(
   return obtenerRoles(token).some((rol) => permitidos.includes(rol));
 }
 
+const INICIO_POR_ROL: readonly (readonly [string, string])[] = [
+  ["GERENTE_GENERAL", "/dashboard"],
+  ["GERENTE", "/dashboard"],
+  ["MESERO", "/mesero/pedidos"],
+  ["COCINA", "/cocina"],
+];
+
+export function inicioParaRoles(roles: readonly string[]): string {
+  const inicio = INICIO_POR_ROL.find(([rol]) => roles.includes(rol));
+  return inicio ? inicio[1] : "/menu";
+}
+
+export function inicioDelToken(token: string): string {
+  return inicioParaRoles(obtenerRoles(token));
+}
+
 export function rolesRequeridosPara(
   pathname: string,
 ): readonly string[] | null {
