@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import PanelGerenteLayout from "@/app/admin/platillos/layout";
+import { PanelGerente } from "@/components/admin/panel-gerente";
 
 vi.mock("next/font/google", () => ({ Fraunces: () => ({ className: "" }) }));
 vi.mock("next/navigation", () => ({
@@ -36,6 +37,14 @@ it("la navegación lleva a todas las secciones del gerente", () => {
     ["Platillos", "/admin/platillos"],
     ["Cocina", "/cocina"],
     ["Dashboard", "/dashboard"],
+    ["Beneficios", "/admin/beneficios"],
     ["Ver menú", "/menu"],
   ]);
+});
+
+it("el panel del gerente general ofrece Beneficios y las rutas de su rol", () => {
+  render(<PanelGerente gerenteGeneral>contenido</PanelGerente>);
+  const nav = screen.getByRole("navigation", { name: "Panel de gerente" });
+  expect(within(nav).getAllByRole("link").map((a) => a.textContent))
+    .toEqual(["Dashboard", "Beneficios", "Ver menú"]);
 });

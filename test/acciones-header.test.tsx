@@ -38,6 +38,7 @@ describe("enlacesDelHeader", () => {
       "Cocina",
       "Dashboard",
       "Gestionar platillos",
+      "Beneficios",
     ]);
   });
 
@@ -52,7 +53,7 @@ describe("enlacesDelHeader", () => {
     ).toEqual([{ href: "/cocina", texto: "Tablero de cocina", destacado: true }]);
   });
 
-  it("gerente general: solo el dashboard", () => {
+  it("gerente general: dashboard y beneficios", () => {
     expect(
       enlacesDelHeader({
         autenticado: true,
@@ -60,7 +61,10 @@ describe("enlacesDelHeader", () => {
         esMesero: false,
         esGerenteGeneral: true,
       }),
-    ).toEqual([{ href: "/dashboard", texto: "Dashboard", destacado: true }]);
+    ).toEqual([
+      { href: "/dashboard", texto: "Dashboard", destacado: true },
+      { href: "/admin/beneficios", texto: "Beneficios" },
+    ]);
   });
 });
 
