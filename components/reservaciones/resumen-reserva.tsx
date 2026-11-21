@@ -1,0 +1,89 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { puedeModificarReserva, rutaEdicion } from "@/lib/edicion-reserva";
+import { CancelarReserva } from "./cancelar-reserva";
+import { Badge } from "@/components/ui/badge";
+import { formatoFecha, formatoHora } from "@/lib/reservaciones";
+import type { Reservacion } from "@/lib/confirmacion-reserva";
+
+export function ResumenReserva({
+  reserva: original,
+  permitirEdicion = false,
+  destacada = false,
+}: {
+  reserva: Reservacion;
+  permitirEdicion?: boolean;
+  destacada?: boolean;
+}) {
+  const [cancelada, setCancelada] = useState<Reservacion | null>(null);
+  const reserva =
+    cancelada?.reservacionId === original.reservacionId ? cancelada : original;
+  const ref = useRef<HTMLElement>(null);
+  // Al llegar desde una notificación, la reservación queda a la vista
+  useEffect(() => {
+    if (destacada) ref.current?.scrollIntoView?.({ block: "center" });
+  }, [destacada]);
+  const detalles = [
+    ["Sucursal", reserva.sucursal],
+    ["Mesa", String(reserva.mesa)],
+    ["Fecha", formatoFecha(reserva.fecha)],
+    ["Hora", formatoHora(reserva.hora)],
+    ["Personas", String(reserva.personas)],
+  ];
+  return (
+    <article
+      ref={ref}
+      aria-current={destacada ? "true" : undefined}
+      className={`rounded-2xl border bg-[#18181b] p-6 sm:p-8 ${
+        destacada
+          ? "border-[#FF7A1A] ring-2 ring-[#FF7A1A]/40"
+          : "border-zinc-800"
+      }`}
+    >
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold tabular-nums sm:text-2xl">
+          {reserva.reservacionId}
+        </h2>
+        <Badge
+          variant={reserva.estado === "CONFIRMADA" ? "success" : "neutral"}
+        >
+          {reserva.estado === "CONFIRMADA" ? "Confirmada" : "Cancelada"}
+        </Badge>
+      </div>
+      <dl className="grid gap-5 sm:grid-cols-2">
+        {detalles.map(([titulo, valor]) => (
+          <div key={titulo}>
+            <dt className="text-sm text-zinc-400">{titulo}</dt>
+            <dd className="mt-1 text-base leading-relaxed text-zinc-100 sm:text-lg">
+              {valor}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-6 border-t border-zinc-800 pt-4 text-xs leading-relaxed text-zinc-400">
+        Duración: 2 horas · Horario de El Salvador
+      </p>
+      {permitirEdicion && puedeModificarReserva(reserva) && (
+        <Link
+          href={rutaEdicion(reserva.reservacionId)}
+          className="mt-5 inline-block rounded-full bg-[#FF7A1A] px-5 py-3 font-semibold text-[#101012] hover:bg-orange-400"
+        >
+          Modificar reservación
+        </Link>
+      )}
+      {permitirEdicion && puedeModificarReserva(reserva) && (
+        <div>
+          <CancelarReserva reserva={reserva} onCancelada={setCancelada} />
+        </div>
+      )}
+      {cancelada?.reservacionId === original.reservacionId && (
+        <p role="status" className="mt-4 text-green-300">
+          Tu reservación fue cancelada. La mesa quedó disponible y recibirás un
+          aviso en tus notificaciones.
+        </p>
+      )}
+    </article>
+  );
+}

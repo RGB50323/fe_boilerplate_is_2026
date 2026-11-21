@@ -1,26 +1,55 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  rolesRequeridosPara,
+  tieneRolPermitido,
+  tokenVencido,
+} from "@/lib/roles";
 import { SESSION_COOKIE } from "@/lib/session";
+import { retornoLogin } from "@/lib/retorno-login";
 
-const publicRoutes = ["/login"];
+const publicRoutes = ["/menu", "/reservas"];
+const guestOnlyRoutes = ["/login"];
 
 // Chequeo optimista: solo verifica que exista la cookie de sesión.
 // Si el backend expone un token verificable (p. ej. JWT), validarlo aquí.
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = publicRoutes.includes(pathname);
-  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
+  const isGuestOnlyRoute = guestOnlyRoutes.includes(pathname);
+  const cookie = request.cookies.get(SESSION_COOKIE)?.value;
+  const vencida = cookie ? tokenVencido(cookie) : false;
+  const token = vencida ? undefined : cookie;
+  const hasSession = Boolean(token);
+  const responder = (respuesta: NextResponse) => {
+    if (vencida) respuesta.cookies.delete(SESSION_COOKIE);
+    return respuesta;
+  };
 
-  if (!isPublicRoute && !hasSession) {
-    return NextResponse.redirect(new URL("/login", request.nextUrl));
+  if (!isPublicRoute && !isGuestOnlyRoute && !hasSession) {
+    const login = new URL("/login", request.nextUrl);
+    const siguiente = retornoLogin(pathname + request.nextUrl.search);
+    if (siguiente !== "/menu") login.searchParams.set("next", siguiente);
+    return responder(NextResponse.redirect(login));
   }
 
-  if (isPublicRoute && hasSession) {
-    return NextResponse.redirect(new URL("/", request.nextUrl));
+  if (
+    isGuestOnlyRoute &&
+    hasSession &&
+    retornoLogin(request.nextUrl.searchParams.get("next")) === "/menu"
+  ) {
+    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
   }
 
-  return NextResponse.next();
+  const requiredRoles = rolesRequeridosPara(pathname);
+  if (token && requiredRoles && !tieneRolPermitido(token, requiredRoles)) {
+    return responder(NextResponse.redirect(new URL("/menu", request.nextUrl)));
+  }
+
+  return responder(NextResponse.next());
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
