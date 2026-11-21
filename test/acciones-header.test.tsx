@@ -51,10 +51,12 @@ describe("enlacesDelHeader", () => {
         esMesero: false,
         esCocina: true,
       }),
-    ).toEqual([{ href: "/cocina", texto: "Tablero de cocina", destacado: true }]);
+    ).toEqual([
+      { href: "/cocina", texto: "Tablero de cocina", destacado: true },
+    ]);
   });
 
-  it("gerente general: dashboard, administración de beneficios y canje", () => {
+  it("gerente general: dashboard y canje, sin administrar beneficios", () => {
     expect(
       enlacesDelHeader({
         autenticado: true,
@@ -63,7 +65,6 @@ describe("enlacesDelHeader", () => {
         esGerenteGeneral: true,
       }),
     ).toEqual([
-      { href: "/admin/beneficios", texto: "Administrar beneficios" },
       { href: "/admin/beneficios/canjes", texto: "Canje de puntos" },
       { href: "/dashboard", texto: "Dashboard", destacado: true },
     ]);

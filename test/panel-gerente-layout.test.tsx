@@ -43,10 +43,19 @@ it("la navegación lleva a todas las secciones del gerente", () => {
   ]);
 });
 
-it("el panel de gerente general ofrece ambas funciones de lealtad", () => {
+it("el panel de gerente general solo ofrece el canje de puntos", () => {
   render(<PanelGerente esGerenteGeneral>contenido</PanelGerente>);
-  const nav = within(screen.getByRole("navigation", { name: "Panel de gerente" }));
-  expect(nav.getByRole("link", { name: "Beneficios" })).toHaveAttribute("href", "/admin/beneficios");
-  expect(nav.getByRole("link", { name: "Canje de puntos" })).toHaveAttribute("href", "/admin/beneficios/canjes");
-  expect(nav.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
+  const nav = within(
+    screen.getByRole("navigation", { name: "Panel de gerente" }),
+  );
+  expect(
+    nav.queryByRole("link", { name: "Beneficios" }),
+  ).not.toBeInTheDocument();
+  expect(nav.getByRole("link", { name: "Canje de puntos" })).toHaveAttribute(
+    "href",
+    "/admin/beneficios/canjes",
+  );
+  expect(
+    nav.queryByRole("link", { name: "Inventario" }),
+  ).not.toBeInTheDocument();
 });
