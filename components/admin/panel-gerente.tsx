@@ -10,7 +10,8 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-const ENLACE = "py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white";
+const ENLACE =
+  "py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white";
 
 export const ENLACES_GERENTE = [
   { href: "/admin/ocupacion", texto: "Ocupación" },
@@ -25,12 +26,17 @@ export const ENLACES_GERENTE = [
   { href: "/menu", texto: "Ver menú" },
 ];
 
-export function PanelGerente({ children, esGerenteGeneral = false }: {
+export function PanelGerente({
+  children,
+  esGerenteGeneral = false,
+}: {
   children: ReactNode;
   esGerenteGeneral?: boolean;
 }) {
   const enlaces = esGerenteGeneral
-    ? ENLACES_GERENTE.filter(({ href }) => ["/admin/beneficios", "/admin/beneficios/canjes", "/dashboard", "/menu"].includes(href))
+    ? ENLACES_GERENTE.filter(({ href }) =>
+        ["/admin/beneficios/canjes", "/dashboard", "/menu"].includes(href),
+      )
     : ENLACES_GERENTE;
   return (
     <div
@@ -45,10 +51,15 @@ export function PanelGerente({ children, esGerenteGeneral = false }: {
             >
               Los Burle
             </Link>
-            <p className="text-lg text-zinc-400 sm:text-2xl">Panel de gerente</p>
+            <p className="text-lg text-zinc-400 sm:text-2xl">
+              Panel de gerente
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <nav
+              aria-label="Panel de gerente"
+              className="flex flex-wrap items-center gap-x-5 gap-y-2"
+            >
               {enlaces.map((e) => (
                 <Link key={e.href} href={e.href} className={ENLACE}>
                   {e.texto}

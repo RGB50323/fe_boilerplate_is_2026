@@ -42,9 +42,18 @@ export function enlacesDelHeader({
       destacado: true,
     });
   }
+  // H20: solo el gerente administra; el gerente general solo verifica cupones
+  if (autenticado && esGerente) {
+    enlaces.push({
+      href: "/admin/beneficios",
+      texto: "Administrar beneficios",
+    });
+  }
   if (autenticado && (esGerente || esGerenteGeneral)) {
-    enlaces.push({ href: "/admin/beneficios", texto: "Administrar beneficios" });
-    enlaces.push({ href: "/admin/beneficios/canjes", texto: "Canje de puntos" });
+    enlaces.push({
+      href: "/admin/beneficios/canjes",
+      texto: "Canje de puntos",
+    });
   }
   if (esMesero) {
     enlaces.push({ href: "/mesero/entregas", texto: "Por entregar" });
@@ -53,10 +62,18 @@ export function enlacesDelHeader({
       texto: "Registrar pedido",
       destacado: true,
     });
-    enlaces.push({ href: "/mesero/canjes", texto: "Canje de puntos", destacado: true });
+    enlaces.push({
+      href: "/mesero/canjes",
+      texto: "Canje de puntos",
+      destacado: true,
+    });
   }
   if (esCocina) {
-    enlaces.push({ href: "/cocina", texto: "Tablero de cocina", destacado: true });
+    enlaces.push({
+      href: "/cocina",
+      texto: "Tablero de cocina",
+      destacado: true,
+    });
   }
   if (esGerenteGeneral) {
     enlaces.push({ href: "/dashboard", texto: "Dashboard", destacado: true });

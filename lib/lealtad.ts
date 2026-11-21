@@ -1,4 +1,4 @@
-﻿export type Puntos = {
+export type Puntos = {
   saldoDisponible: number;
   puntosPendientes: number;
   movimientos: {
@@ -26,15 +26,22 @@ export type Beneficio = DatosBeneficio & {
   deshabilitadoEn: string | null;
 };
 
-export type EstadoBeneficio = "ACTIVO" | "INACTIVO" | "FUTURO" | "CADUCADO" | "DESHABILITADO";
+export type EstadoBeneficio =
+  "ACTIVO" | "INACTIVO" | "FUTURO" | "CADUCADO" | "DESHABILITADO";
 export type BeneficioAdministrativo = Beneficio & { estado: EstadoBeneficio };
 
+export type EstadoCupon = "PENDIENTE" | "UTILIZADO" | "EXPIRADO";
+
+// El cupón vale hasta que se usa o hasta el fin de la vigencia del beneficio
 export type Cupon = {
   id: number;
   codigo: string;
   beneficio: Pick<Beneficio, "id" | "nombre">;
+  puntosUsados: number;
+  creadoEn: string;
   expiraEn: string;
   utilizadoEn: string | null;
+  estado: EstadoCupon;
 };
 
 export type ReglaPuntos = { puntosPorDolar: number };
@@ -45,7 +52,10 @@ export async function ejecutarLealtad<T>(
   try {
     return await accion;
   } catch {
-    return { ok: false, error: "No pudimos completar la operación. Intenta de nuevo." };
+    return {
+      ok: false,
+      error: "No pudimos completar la operación. Intenta de nuevo.",
+    };
   }
 }
 
@@ -54,4 +64,3 @@ export const fechaLealtad = new Intl.DateTimeFormat("es-SV", {
   timeStyle: "short",
   timeZone: "America/El_Salvador",
 });
-

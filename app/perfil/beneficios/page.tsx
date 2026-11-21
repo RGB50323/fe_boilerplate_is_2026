@@ -1,6 +1,10 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { consultarCatalogo, consultarPuntos } from "@/app/actions/lealtad";
+import {
+  consultarCatalogo,
+  consultarMisCupones,
+  consultarPuntos,
+} from "@/app/actions/lealtad";
 import { obtenerUsuarioActual } from "@/lib/usuario";
 import { MisBeneficios } from "./mis-beneficios";
 
@@ -11,7 +15,17 @@ export default async function BeneficiosPage() {
   if (!usuario) redirect("/login?next=/perfil/beneficios");
   if (usuario.rol !== "CLIENTE") redirect("/menu");
 
-  const [puntos, catalogo] = await Promise.all([consultarPuntos(), consultarCatalogo()]);
-  return <MisBeneficios correo={usuario.email} puntosIniciales={puntos} catalogoInicial={catalogo} />;
+  const [puntos, catalogo, cupones] = await Promise.all([
+    consultarPuntos(),
+    consultarCatalogo(),
+    consultarMisCupones(),
+  ]);
+  return (
+    <MisBeneficios
+      correo={usuario.email}
+      puntosIniciales={puntos}
+      catalogoInicial={catalogo}
+      cuponesIniciales={cupones}
+    />
+  );
 }
-

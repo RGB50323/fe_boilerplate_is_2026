@@ -1,21 +1,21 @@
-﻿# H18–H20 · Lealtad
+# H18–H20 · Lealtad
 
 El frontend usa `API_URL` con el prefijo `/api/v1` y el cliente autenticado del proyecto. La cuenta que se muestra en el cupón corresponde al correo de la sesión actual.
 
 | Rol | Ruta | Función |
 | --- | --- | --- |
-| CLIENTE | `/perfil/beneficios` | Consulta de puntos, movimientos, catálogo y compra de cupones |
+| CLIENTE | `/perfil/beneficios` | Consulta de puntos, movimientos, catálogo, canje con resumen y Mis cupones |
 | MESERO | `/mesero/canjes` | Verificación y confirmación de uso |
-| GERENTE y GERENTE_GENERAL | `/admin/beneficios` | Administración del catálogo y la regla de puntos |
+| GERENTE | `/admin/beneficios` | Administración del catálogo y de la regla de puntos (cambiarla o deshabilitarla) |
 | GERENTE y GERENTE_GENERAL | `/admin/beneficios/canjes` | Verificación y confirmación de uso |
 
 En el cobro MESA, el correo de lealtad es opcional. Si se completa, forma parte de la misma solicitud H16 y se conserva al reintentar ese pago con su clave original. El formulario de pagos LLEVAR sigue usando al cliente autenticado.
 
-## Cupones y alcance del historial
+## Canje y Mis cupones
 
-La API permite consultar puntos y movimientos, adquirir un cupón, verificarlo y registrar su uso. Las pestañas «Beneficios pendientes» y «Beneficios consumidos» quedan pendientes de un endpoint de historial de cupones por cliente. Un movimiento de puntos indica que hubo un canje, pero carece de los datos necesarios para recuperar el estado y el código del cupón.
+Al elegir un beneficio se muestra un resumen con el costo, el saldo actual y el saldo después del canje; los puntos se descuentan solo al presionar **Confirmar**. Un doble clic o un reintento usan la misma clave de idempotencia, así que se hace un solo canje.
 
-«Mis beneficios» abre el cupón al adquirirlo y permite volver a ver el último mientras la vista está montada. Al recargar o salir de la vista, el frontend pierde esa referencia. El contador usa `expiraEn` y el servidor decide si el cupón sigue válido cuando un empleado lo verifica o confirma.
+La sección **Mis cupones** (`GET /lealtad/mis-cupones`) lista los cupones del cliente con su estado: Por usar, Utilizado o Expirado. Un cupón por usar se puede volver a abrir con **Ver código** aunque se recargue la página. El cupón vale hasta que se usa o hasta el fin de la vigencia del beneficio; el servidor decide si sigue válido cuando un empleado lo verifica o confirma.
 
 La administración muestra y permite seleccionar fechas en hora de El Salvador. El inicio se envía a las 00:00:00.000 y el fin a las 23:59:59.999 con el desplazamiento `-06:00`. Elegir la misma fecha en ambos campos da un día completo de vigencia.
 

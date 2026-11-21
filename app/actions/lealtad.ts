@@ -1,8 +1,13 @@
-﻿"use server";
+"use server";
 
 import { llamar } from "@/lib/api";
 import type {
-  Beneficio, BeneficioAdministrativo, Cupon, DatosBeneficio, Puntos, ReglaPuntos,
+  Beneficio,
+  BeneficioAdministrativo,
+  Cupon,
+  DatosBeneficio,
+  Puntos,
+  ReglaPuntos,
 } from "@/lib/lealtad";
 
 const erroresCupon = {
@@ -29,15 +34,22 @@ export async function consultarCatalogo() {
   return llamar<Beneficio[]>("lealtad/beneficios");
 }
 
-export async function adquirirCupon(beneficioId: number, claveIdempotencia: string) {
+export async function consultarMisCupones() {
+  return llamar<Cupon[]>("lealtad/mis-cupones");
+}
+
+export async function adquirirCupon(
+  beneficioId: number,
+  claveIdempotencia: string,
+) {
   return llamar<Cupon>("lealtad/canjes", {
     metodo: "POST",
     cuerpo: { beneficioId, claveIdempotencia },
     detallarErrores: true,
     mensajes: {
       400: "Revisa los datos del canje.",
-      404: "El beneficio ya no está disponible.",
-      409: "No se pudo completar el canje. Actualiza el saldo y revisa la disponibilidad.",
+      404: "El beneficio ya no está disponible: está inactivo o vencido.",
+      409: "No tienes puntos disponibles suficientes para este beneficio.",
     },
   });
 }
@@ -50,11 +62,14 @@ export async function consultarCupon(codigo: string) {
 }
 
 export async function utilizarCupon(codigo: string) {
-  return llamar<Cupon>(`lealtad/cupones/${encodeURIComponent(codigo)}/utilizar`, {
-    metodo: "PATCH",
-    mensajes: erroresCupon,
-    detallarErrores: true,
-  });
+  return llamar<Cupon>(
+    `lealtad/cupones/${encodeURIComponent(codigo)}/utilizar`,
+    {
+      metodo: "PATCH",
+      mensajes: erroresCupon,
+      detallarErrores: true,
+    },
+  );
 }
 
 export async function consultarBeneficiosAdministrativos() {
@@ -63,19 +78,32 @@ export async function consultarBeneficiosAdministrativos() {
 
 export async function guardarBeneficio(datos: DatosBeneficio, id?: number) {
   if (id !== undefined && !idValido(id)) {
-    return { ok: false as const, estado: 400, error: "Identificador de beneficio inválido." };
+    return {
+      ok: false as const,
+      estado: 400,
+      error: "Identificador de beneficio inválido.",
+    };
   }
-  return llamar<Beneficio>(id === undefined ? "lealtad/admin/beneficios" : `lealtad/admin/beneficios/${id}`, {
-    metodo: id === undefined ? "POST" : "PATCH",
-    cuerpo: datos,
-    mensajes: erroresBeneficio,
-    detallarErrores: true,
-  });
+  return llamar<Beneficio>(
+    id === undefined
+      ? "lealtad/admin/beneficios"
+      : `lealtad/admin/beneficios/${id}`,
+    {
+      metodo: id === undefined ? "POST" : "PATCH",
+      cuerpo: datos,
+      mensajes: erroresBeneficio,
+      detallarErrores: true,
+    },
+  );
 }
 
 export async function deshabilitarBeneficio(id: number) {
   if (!idValido(id)) {
-    return { ok: false as const, estado: 400, error: "Identificador de beneficio inválido." };
+    return {
+      ok: false as const,
+      estado: 400,
+      error: "Identificador de beneficio inválido.",
+    };
   }
   return llamar<Beneficio>(`lealtad/admin/beneficios/${id}`, {
     metodo: "DELETE",
@@ -96,3 +124,9 @@ export async function guardarRegla(puntosPorDolar: number) {
   });
 }
 
+export async function deshabilitarRegla() {
+  return llamar<ReglaPuntos>("lealtad/admin/regla", {
+    metodo: "DELETE",
+    mensajes: { 404: "No hay una regla vigente para deshabilitar." },
+  });
+}
