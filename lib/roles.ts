@@ -7,6 +7,9 @@ export const ROLES_GERENTE = ["GERENTE"] as const;
 export const ROLES_POR_RUTA: Record<string, readonly string[]> = {
   "/cocina": ROLES_COCINA,
   "/mesero/entregas": ROLES_MESERO,
+  "/mesero/canjes": ROLES_MESERO,
+  "/perfil/beneficios": ["CLIENTE"],
+  "/admin/beneficios": ["GERENTE", "GERENTE_GENERAL"],
   "/admin/inventario": ROLES_GERENTE,
 };
 
