@@ -5,6 +5,7 @@ export function rutaConSucursal(
   const ruta = destino.split(/[?#]/)[0];
   const corresponde =
     ruta === "/menu" ||
+    ruta === "/reservas" ||
     ruta === "/admin/categorias" ||
     ruta === "/admin/platillos" ||
     ruta.startsWith("/admin/platillos/");

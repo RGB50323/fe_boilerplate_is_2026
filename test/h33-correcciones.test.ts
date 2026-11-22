@@ -51,5 +51,6 @@ describe("H33. Correcciones finales de calidad y seguridad", () => {
     expect(rutaConSucursal("/admin/platillos", "sucursal=2")).toBe("/admin/platillos?sucursal=2");
     expect(rutaConSucursal("/menu", "sucursal=2&q=pupu")).toBe("/menu?sucursal=2");
     expect(rutaConSucursal("/cocina", "sucursal=2")).toBe("/cocina");
+    expect(rutaConSucursal("/reservas", "sucursal=2")).toBe("/reservas?sucursal=2");
   });
 });
