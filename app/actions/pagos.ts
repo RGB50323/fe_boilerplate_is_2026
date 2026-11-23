@@ -1,10 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { llamar } from "@/lib/api";
 import type { PagoPorPedido, ResultadoPago, SolicitudPago } from "@/lib/pagos";
 
 export async function procesarPago(solicitud: SolicitudPago) {
-  return llamar<ResultadoPago & { pagoId: number; ticketId: number }>("pagos/procesar", {
+  const respuesta = await llamar<ResultadoPago & { pagoId: number; ticketId: number }>("pagos/procesar", {
     metodo: "POST",
     cuerpo: solicitud,
     detallarErrores: true,
@@ -15,12 +16,16 @@ export async function procesarPago(solicitud: SolicitudPago) {
       502: "La pasarela simulada no respondió correctamente. Reintenta la misma solicitud.",
     },
   });
+  if (respuesta.ok || respuesta.estado === 409) revalidatePath("/mesero/entregas");
+  return respuesta;
 }
 
 export async function consultarPago(transaccionId: string) {
-  return llamar<ResultadoPago>(`pagos/transaccion/${encodeURIComponent(transaccionId)}`, {
+  const respuesta = await llamar<ResultadoPago>(`pagos/transaccion/${encodeURIComponent(transaccionId)}`, {
     mensajes: { 404: "No encontramos la transacción." },
   });
+  if (respuesta.ok && respuesta.datos.estado !== "PENDIENTE") revalidatePath("/mesero/entregas");
+  return respuesta;
 }
 
 export async function consultarPagoPedido(pedidoId: number) {

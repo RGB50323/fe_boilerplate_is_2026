@@ -12,7 +12,8 @@ export function retornoLogin(valor: unknown): string {
     const url = new URL(valor, "https://losburle.local");
     if (
       url.origin !== "https://losburle.local" ||
-      (!["/reservas/nueva", "/perfil/reservaciones", "/reservas"].includes(
+      (!["/reservas/nueva", "/perfil/reservaciones", "/reservas",
+        "/perfil/beneficios", "/mesero/canjes", "/admin/beneficios", "/admin/beneficios/canjes"].includes(
         url.pathname,
       ) &&
         !esRutaEdicion(url.pathname))

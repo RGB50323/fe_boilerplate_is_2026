@@ -5,7 +5,7 @@ import type { ItemsListosResultado, MarcarEntregadoResultado } from "@/app/actio
 import type { ItemPorEntregar } from "@/lib/entregas";
 
 const mocks = vi.hoisted(() => ({
-  router: { replace: vi.fn() },
+  router: { replace: vi.fn(), refresh: vi.fn() },
   listar: vi.fn<() => Promise<ItemsListosResultado>>(),
   entregar: vi.fn<(itemId: number) => Promise<MarcarEntregadoResultado>>(),
 }));
@@ -54,6 +54,7 @@ async function pulsar(texto: string) {
 beforeEach(() => {
   vi.useFakeTimers();
   mocks.router.replace.mockReset();
+  mocks.router.refresh.mockReset();
   mocks.listar.mockReset();
   mocks.entregar.mockReset();
 });
@@ -152,6 +153,7 @@ describe("platillos por entregar (FE-8.1)", () => {
     expect(mesas()).toEqual(["Mesa 2"]);
     expect(screen.getByText("Pedido de la Mesa 7 entregado completo")).toBeInTheDocument();
     expect(mocks.listar).toHaveBeenCalledTimes(1);
+    expect(mocks.router.refresh).toHaveBeenCalledTimes(1);
   });
 
   it("al entregar todo queda el estado vacío", async () => {

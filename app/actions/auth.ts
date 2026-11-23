@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { retornoLogin } from "@/lib/retorno-login";
 import { createSession, deleteSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
+import { inicioDelToken } from "@/lib/roles";
 
 export type LoginState = {
   error?: string;
@@ -70,7 +71,8 @@ export async function login(
   }
 
   await createSession(token);
-  redirect(retornoLogin(formData.get("next")));
+  const siguiente = retornoLogin(formData.get("next"));
+  redirect(siguiente === "/menu" ? inicioDelToken(token) : siguiente);
 }
 
 export async function logout() {

@@ -56,6 +56,23 @@ afterEach(() => {
 });
 
 describe("PagoPedido", () => {
+  it.each(["", "cliente@example.test"])("cobra MESA con correo opcional %j y conserva la solicitud al reintentar", async (correo) => {
+    vi.mocked(procesarPago).mockResolvedValueOnce({ ok: false, error: "Sin conexión" })
+      .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO") });
+    mesa();
+    fireEvent.change(screen.getByLabelText(/Correo de lealtad/), { target: { value: correo } });
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    const reintentar = await screen.findByRole("button", { name: "Reintentar el mismo pago" });
+    const [solicitud] = vi.mocked(procesarPago).mock.calls[0];
+    if (correo) expect(solicitud.correoLealtad).toBe(correo);
+    else expect(solicitud).not.toHaveProperty("correoLealtad");
+    expect(screen.getByLabelText(/Correo de lealtad/)).toBeDisabled();
+    fireEvent.click(reintentar);
+    expect(await screen.findByText("Pago confirmado")).toBeInTheDocument();
+    expect(procesarPago).toHaveBeenNthCalledWith(2, solicitud);
+  });
+
   it("recupera un pago de otro mesero y descarga el comprobante en una nueva visita sin almacenamiento", async () => {
     vi.useFakeTimers();
     vi.mocked(consultarPago).mockResolvedValue({ ok: true, datos: resultado("CONFIRMADO", 25) });
@@ -193,11 +210,28 @@ describe("PagoPedido", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
     expect(await screen.findByText("Pago confirmado")).toBeVisible();
     expect(screen.getByRole("button", { name: "Descargar comprobante PDF" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Volver al menú principal" })).toHaveAttribute("href", "/menu");
+    expect(screen.getByRole("link", { name: "Volver a pedidos pendientes de cobro" })).toHaveAttribute("href", "/mesero/entregas");
     expect(procesarPago).toHaveBeenCalledWith({
       metodo: "EFECTIVO", montoRecibido: "20.00", solicitudId: expect.any(String),
       ticket: { id: 87, total: 17.5, items: [{ nombre: "Limonada", cantidad: 1, precio_unitario: 17.5, subtotal: 17.5 }] },
     });
+  });
+
+  it("envía el correo opcional en efectivo y lo conserva si H18 lo rechaza", async () => {
+    vi.mocked(procesarPago).mockResolvedValue({
+      ok: false, estado: 400, error: "Datos inválidos",
+      errores: { correoLealtad: "Cliente no habilitado" },
+    });
+    mesa();
+    const correo = screen.getByLabelText("Correo del cliente (opcional)");
+    fireEvent.change(correo, { target: { value: "cliente@example.com" } });
+    fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20.00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Cliente no habilitado");
+    expect(correo).toHaveValue("cliente@example.com");
+    expect(procesarPago).toHaveBeenCalledWith(expect.objectContaining({
+      metodo: "EFECTIVO", correoLealtad: "cliente@example.com",
+    }));
   });
 
   it("consulta MESA en segundo plano y termina al confirmar", async () => {
@@ -208,6 +242,7 @@ describe("PagoPedido", () => {
       .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO", 25) });
     mesa();
     fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "TARJETA" } });
+    fireEvent.change(screen.getByLabelText("Correo del cliente (opcional)"), { target: { value: "cliente@example.com" } });
     completarTarjeta();
     expect(screen.getByLabelText("Número de tarjeta ficticia")).toHaveValue("4242 4242 4242 4242");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Pagar con tarjeta" })); });
@@ -216,7 +251,7 @@ describe("PagoPedido", () => {
     const [solicitud] = vi.mocked(procesarPago).mock.calls[0];
     expect(solicitud).toEqual({
       solicitudId: expect.any(String), ticket: expect.any(Object),
-      metodo: "TARJETA", marca: "VISA", ultimosCuatro: "4242",
+      metodo: "TARJETA", marca: "VISA", ultimosCuatro: "4242", correoLealtad: "cliente@example.com",
     });
     const guardado = sessionStorage.getItem("los-burle:pago:MESA:mesero:87") ?? "";
     for (const dato of ["4242424242424242", "4242 4242 4242 4242", "Ana Demo", "12/30", '"codigo"']) {

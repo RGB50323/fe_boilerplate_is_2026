@@ -10,7 +10,8 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-const ENLACE = "py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white";
+const ENLACE =
+  "py-2 text-sm text-zinc-300 underline underline-offset-4 hover:text-white";
 
 export const ENLACES_GERENTE = [
   { href: "/admin/ocupacion", texto: "Ocupación" },
@@ -18,12 +19,25 @@ export const ENLACES_GERENTE = [
   { href: "/admin/resenas", texto: "Moderar reseñas" },
   { href: "/admin/inventario", texto: "Inventario" },
   { href: "/admin/platillos", texto: "Platillos" },
+  { href: "/admin/beneficios", texto: "Beneficios" },
+  { href: "/admin/beneficios/canjes", texto: "Canje de puntos" },
   { href: "/cocina", texto: "Cocina" },
   { href: "/dashboard", texto: "Dashboard" },
   { href: "/menu", texto: "Ver menú" },
 ];
 
-export function PanelGerente({ children }: { children: ReactNode }) {
+export function PanelGerente({
+  children,
+  esGerenteGeneral = false,
+}: {
+  children: ReactNode;
+  esGerenteGeneral?: boolean;
+}) {
+  const enlaces = esGerenteGeneral
+    ? ENLACES_GERENTE.filter(({ href }) =>
+        ["/admin/beneficios/canjes", "/dashboard", "/menu"].includes(href),
+      )
+    : ENLACES_GERENTE;
   return (
     <div
       className={`${fraunces.className} min-h-dvh bg-[#101012] px-4 pb-16 pt-6 text-zinc-100 scheme-dark sm:px-8 lg:px-15`}
@@ -37,18 +51,23 @@ export function PanelGerente({ children }: { children: ReactNode }) {
             >
               Los Burle
             </Link>
-            <p className="text-lg text-zinc-400 sm:text-2xl">Panel de gerente</p>
+            <p className="text-lg text-zinc-400 sm:text-2xl">
+              Panel de gerente
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <nav aria-label="Panel de gerente" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {ENLACES_GERENTE.map((e) => (
+            <nav
+              aria-label="Panel de gerente"
+              className="flex flex-wrap items-center gap-x-5 gap-y-2"
+            >
+              {enlaces.map((e) => (
                 <Link key={e.href} href={e.href} className={ENLACE}>
                   {e.texto}
                 </Link>
               ))}
             </nav>
             <div className="flex items-center gap-3">
-              <ContadorAlertas />
+              {!esGerenteGeneral && <ContadorAlertas />}
               <CampanaNotificaciones enLinea />
             </div>
           </div>

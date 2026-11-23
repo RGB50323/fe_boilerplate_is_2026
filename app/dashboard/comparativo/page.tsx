@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default async function ComparativoPage() {
   // Compara sucursales: solo para el gerente general
   const motivo = await motivoSinAcceso([ROL_GERENTE_GENERAL]);
-  if (motivo) return <DashboardSinAcceso motivo={motivo} />;
+  if (motivo) return <DashboardSinAcceso motivo={motivo} soloGerenteGeneral />;
 
   const { sucursales, error } = await listarSucursales();
   if (error) return <DashboardSinAcceso motivo="error" />;

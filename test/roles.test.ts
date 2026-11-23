@@ -55,6 +55,14 @@ describe("roles del JWT", () => {
       expect(tieneRolPermitido(jwt({ rol }), ROLES_MESERO)).toBe(false);
     }
   });
+
+  it("distingue las rutas de cliente, mesero y gerencia en lealtad", () => {
+    expect(rolesRequeridosPara("/perfil/beneficios")).toEqual(["CLIENTE"]);
+    expect(rolesRequeridosPara("/mesero/canjes")).toEqual(["MESERO"]);
+    for (const ruta of ["/admin/beneficios", "/admin/beneficios/canjes"]) {
+      expect(rolesRequeridosPara(ruta)).toEqual(["GERENTE", "GERENTE_GENERAL"]);
+    }
+  });
 });
 
 describe("tokenVencido", () => {

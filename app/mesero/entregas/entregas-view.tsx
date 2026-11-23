@@ -183,6 +183,7 @@ export function EntregasView() {
 
       if ("entregado" in resultado) {
         setItems((actuales) => quitarItem(actuales, item.itemId));
+        if (resultado.entregado.pedidoEstado === "ENTREGADO") router.refresh();
         avisar(
           resultado.entregado.pedidoEstado === "ENTREGADO"
             ? `Pedido de la Mesa ${item.mesa} entregado completo`
@@ -190,6 +191,7 @@ export function EntregasView() {
           "success",
         );
       } else if ("refrescar" in resultado) {
+        router.refresh();
         await cargar(true);
       } else if ("sinSesion" in resultado) {
         router.replace("/login");

@@ -5,6 +5,7 @@ import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStor
 import { consultarPago, consultarPagoPedido, procesarPago } from "@/app/actions/pagos";
 import { obtenerPedido } from "@/app/actions/pedidos";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DescargarComprobante } from "@/components/pagos/descargar-comprobante";
 import { TarjetaSimulada, leerTarjetaSimulada } from "@/components/pagos/tarjeta-simulada";
 import { subtotalItem, type PedidoSeguimiento } from "@/lib/seguimiento";
@@ -72,7 +73,10 @@ export function PagoPedido(props: Props) {
   const [mostrar, setMostrar] = useState(tipo === "MESA");
   const [metodo, setMetodo] = useState<MetodoPago>(tipo === "MESA" ? "EFECTIVO" : "TARJETA");
   const [monto, setMonto] = useState("");
+  const [correoLealtad, setCorreoLealtad] = useState("");
   const montoId = useId();
+  const correoId = useId();
+  const [correo, setCorreo] = useState("");
   const consultaEnCurso = useRef(false);
   const conflicto = useRef(false);
   const [ocupado, setOcupado] = useState(false);
@@ -182,13 +186,16 @@ export function PagoPedido(props: Props) {
     }
 
     await ejecutar(async () => {
+      const correo = tipo === "MESA" ? correoLealtad.trim() : "";
       const solicitud: SolicitudPago = reintento ?? {
         solicitudId: crypto.randomUUID(),
         ticket: construirTicket(pedido),
+        ...(correo ? { correoLealtad: correo } : {}),
         ...(tarjeta?.ok
           ? { metodo: "TARJETA", ...tarjeta.datos }
           : { metodo: "EFECTIVO", montoRecibido: monto }),
       };
+      if (tipo === "MESA") setCorreoLealtad(solicitud.correoLealtad ?? "");
       guardar({ solicitud });
       const respuesta = await procesarPago(solicitud);
       if (!respuesta.ok) {
@@ -198,7 +205,7 @@ export function PagoPedido(props: Props) {
           return;
         }
         if (respuesta.estado === 400 || respuesta.estado === 404) guardar(null);
-        setError(respuesta.error);
+        setError(respuesta.errores?.correoLealtad ?? respuesta.error);
         setSinSesion(Boolean(respuesta.sinSesion));
         return;
       }
@@ -311,6 +318,30 @@ export function PagoPedido(props: Props) {
         <form onSubmit={enviar} className="grid gap-4">
           <fieldset disabled={ocupado || Boolean(reintento)} className="grid gap-4">
             {tipo === "MESA" && (
+              <label htmlFor={correoId} className="grid gap-1">
+                Correo de lealtad (opcional)
+                <Input id={correoId} type="email" maxLength={254} autoComplete="off"
+                  value={reintento ? reintento.correoLealtad ?? "" : correo}
+                  onChange={(evento) => setCorreo(evento.target.value)}
+                  aria-describedby={`${correoId}-ayuda`} />
+                <span id={`${correoId}-ayuda`} className="text-sm text-zinc-400">
+                  Usa el correo registrado del cliente para atribuir los puntos del pago.
+                </span>
+              </label>
+            )}
+            {tipo === "MESA" && (
+              <label>
+                Correo del cliente (opcional)
+                <input
+                  className={campo}
+                  type="email"
+                  maxLength={254}
+                  value={reintento ? reintento.correoLealtad ?? "" : correoLealtad}
+                  onChange={(evento) => setCorreoLealtad(evento.currentTarget.value)}
+                />
+              </label>
+            )}
+            {tipo === "MESA" && (
               <label>
                 Método de pago
                 <select className={campo} value={metodoActual} onChange={(e) => setMetodo(e.target.value === "EFECTIVO" ? "EFECTIVO" : "TARJETA")}>
@@ -363,7 +394,7 @@ export function PagoPedido(props: Props) {
       {consultarPendiente && <p className="text-sm text-zinc-300">Actualizando el estado del pago automáticamente.</p>}
       {comprobanteId != null && <DescargarComprobante id={comprobanteId} />}
       {tipo === "MESA" && estado === "CONFIRMADO" && (
-        <Link href="/menu" className="text-orange-300 underline">Volver al menú principal</Link>
+        <Link href="/mesero/entregas" prefetch={false} className="text-orange-300 underline">Volver a pedidos pendientes de cobro</Link>
       )}
       {(falloInicial || reconciliacionPendiente) && (
         <Button onClick={() => ejecutar(reconciliar)} disabled={ocupado}>Actualizar estado del cobro</Button>
