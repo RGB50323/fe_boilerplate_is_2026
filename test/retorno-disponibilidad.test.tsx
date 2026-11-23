@@ -91,3 +91,18 @@ it("mantiene la búsqueda manual al entrar normalmente", async () => {
     screen.getByText("Encontrá el lugar para tu próxima visita"),
   ).toBeVisible();
 });
+it("conserva la sucursal que viene del menú al volver", async () => {
+  vi.mocked(listarSucursales).mockResolvedValue({
+    sucursales: [
+      { id: 1, nombre: "Centro", horarios: [] },
+      { id: 2, nombre: "Escalón", horarios: [] },
+    ],
+  });
+  render(
+    await ReservasPage({ searchParams: Promise.resolve({ sucursal: "2" }) }),
+  );
+  expect(screen.getByRole("link", { name: "Volver al menú" })).toHaveAttribute(
+    "href",
+    "/menu?sucursal=2",
+  );
+});

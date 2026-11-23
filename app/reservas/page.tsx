@@ -35,8 +35,10 @@ export default async function ReservasPage({
   const ahora = new Date();
   const fecha = fechaLocal(ahora);
   const params = await searchParams;
+  // Acepta la sucursal que viene del menú (?sucursal=) o del formulario
+  const sucursalPedida = params.sucursalId ?? params.sucursal;
   const sucursal =
-    sucursales.find((s) => String(s.id) === params.sucursalId) ?? sucursales[0];
+    sucursales.find((s) => String(s.id) === sucursalPedida) ?? sucursales[0];
   const fechaFiltro =
     typeof params.fecha === "string" && fechaValida(params.fecha)
       ? params.fecha
@@ -73,7 +75,9 @@ export default async function ReservasPage({
         <div
           className={`${fraunces.className} mb-7 flex justify-between text-sm text-orange-300`}
         >
-          <Link href="/menu">Volver al menú</Link>
+          <Link href={sucursal ? `/menu?sucursal=${sucursal.id}` : "/menu"}>
+            Volver al menú
+          </Link>
           <Link href="/perfil/reservaciones">Mis reservaciones</Link>
         </div>
         <header className="mb-10 text-center sm:mb-12">
