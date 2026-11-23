@@ -18,7 +18,7 @@ export type MotivoSinAcceso = "sin-acceso" | "sin-sesion" | "error";
 const MENSAJES: Record<MotivoSinAcceso, { mensaje: string; descripcion: string }> = {
   "sin-acceso": {
     mensaje: "No tenés acceso al dashboard de ventas",
-    descripcion: "Esta sección es solo para el gerente general.",
+    descripcion: "Esta sección es para el gerente general y los gerentes de sucursal.",
   },
   "sin-sesion": {
     mensaje: "Tu sesión expiró",
@@ -30,10 +30,20 @@ const MENSAJES: Record<MotivoSinAcceso, { mensaje: string; descripcion: string }
   },
 };
 
-export function DashboardSinAcceso({ motivo }: { motivo: MotivoSinAcceso }) {
+export function DashboardSinAcceso({
+  motivo,
+  soloGerenteGeneral = false,
+}: {
+  motivo: MotivoSinAcceso;
+  soloGerenteGeneral?: boolean;
+}) {
   const router = useRouter();
   const [saliendo, salir] = useTransition();
-  const { mensaje, descripcion } = MENSAJES[motivo];
+  const { mensaje } = MENSAJES[motivo];
+  const descripcion =
+    motivo === "sin-acceso" && soloGerenteGeneral
+      ? "Esta sección es solo para el gerente general."
+      : MENSAJES[motivo].descripcion;
 
   return (
     <main
