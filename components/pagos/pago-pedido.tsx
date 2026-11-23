@@ -76,7 +76,6 @@ export function PagoPedido(props: Props) {
   const [correoLealtad, setCorreoLealtad] = useState("");
   const montoId = useId();
   const correoId = useId();
-  const [correo, setCorreo] = useState("");
   const consultaEnCurso = useRef(false);
   const conflicto = useRef(false);
   const [ocupado, setOcupado] = useState(false);
@@ -321,24 +320,12 @@ export function PagoPedido(props: Props) {
               <label htmlFor={correoId} className="grid gap-1">
                 Correo de lealtad (opcional)
                 <Input id={correoId} type="email" maxLength={254} autoComplete="off"
-                  value={reintento ? reintento.correoLealtad ?? "" : correo}
-                  onChange={(evento) => setCorreo(evento.target.value)}
+                  value={reintento ? reintento.correoLealtad ?? "" : correoLealtad}
+                  onChange={(evento) => setCorreoLealtad(evento.target.value)}
                   aria-describedby={`${correoId}-ayuda`} />
                 <span id={`${correoId}-ayuda`} className="text-sm text-zinc-400">
                   Usa el correo registrado del cliente para atribuir los puntos del pago.
                 </span>
-              </label>
-            )}
-            {tipo === "MESA" && (
-              <label>
-                Correo del cliente (opcional)
-                <input
-                  className={campo}
-                  type="email"
-                  maxLength={254}
-                  value={reintento ? reintento.correoLealtad ?? "" : correoLealtad}
-                  onChange={(evento) => setCorreoLealtad(evento.currentTarget.value)}
-                />
               </label>
             )}
             {tipo === "MESA" && (
