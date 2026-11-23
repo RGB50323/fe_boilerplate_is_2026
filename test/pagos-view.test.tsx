@@ -65,6 +65,7 @@ describe("PagoPedido", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
     const reintentar = await screen.findByRole("button", { name: "Reintentar el mismo pago" });
     const [solicitud] = vi.mocked(procesarPago).mock.calls[0];
+    expect(screen.getAllByRole("textbox", { name: /correo/i })).toHaveLength(1);
     if (correo) expect(solicitud.correoLealtad).toBe(correo);
     else expect(solicitud).not.toHaveProperty("correoLealtad");
     expect(screen.getByLabelText(/Correo de lealtad/)).toBeDisabled();
@@ -223,7 +224,7 @@ describe("PagoPedido", () => {
       errores: { correoLealtad: "Cliente no habilitado" },
     });
     mesa();
-    const correo = screen.getByLabelText("Correo del cliente (opcional)");
+    const correo = screen.getByLabelText(/Correo de lealtad/);
     fireEvent.change(correo, { target: { value: "cliente@example.com" } });
     fireEvent.change(screen.getByLabelText("Monto recibido"), { target: { value: "20.00" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirmar pago" }));
@@ -242,7 +243,7 @@ describe("PagoPedido", () => {
       .mockResolvedValueOnce({ ok: true, datos: resultado("CONFIRMADO", 25) });
     mesa();
     fireEvent.change(screen.getByLabelText("Método de pago"), { target: { value: "TARJETA" } });
-    fireEvent.change(screen.getByLabelText("Correo del cliente (opcional)"), { target: { value: "cliente@example.com" } });
+    fireEvent.change(screen.getByLabelText(/Correo de lealtad/), { target: { value: "cliente@example.com" } });
     completarTarjeta();
     expect(screen.getByLabelText("Número de tarjeta ficticia")).toHaveValue("4242 4242 4242 4242");
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Pagar con tarjeta" })); });
