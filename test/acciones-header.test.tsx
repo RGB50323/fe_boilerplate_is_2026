@@ -18,13 +18,13 @@ describe("enlacesDelHeader", () => {
   it("cliente: reservar, pedidos y perfil", () => {
     expect(
       textos({ autenticado: true, esGerente: false, esMesero: false }),
-    ).toEqual(["Reservar mesa", "Mis pedidos", "Mi perfil"]);
+    ).toEqual(["Reservar mesa", "Mis pedidos", "Mi perfil", "Mis beneficios"]);
   });
 
   it("mesero: sin Reservar mesa, Mis pedidos ni Mi perfil", () => {
     expect(
       textos({ autenticado: true, esGerente: false, esMesero: true }),
-    ).toEqual(["Por entregar", "Registrar pedido"]);
+    ).toEqual(["Por entregar", "Registrar pedido", "Canje de puntos"]);
   });
 
   it("gerente: sin Reservar mesa, Mis pedidos ni Mi perfil", () => {
@@ -38,6 +38,8 @@ describe("enlacesDelHeader", () => {
       "Cocina",
       "Dashboard",
       "Gestionar platillos",
+      "Administrar beneficios",
+      "Canje de puntos",
     ]);
   });
 
@@ -49,10 +51,12 @@ describe("enlacesDelHeader", () => {
         esMesero: false,
         esCocina: true,
       }),
-    ).toEqual([{ href: "/cocina", texto: "Tablero de cocina", destacado: true }]);
+    ).toEqual([
+      { href: "/cocina", texto: "Tablero de cocina", destacado: true },
+    ]);
   });
 
-  it("gerente general: solo el dashboard", () => {
+  it("gerente general: dashboard y canje, sin administrar beneficios", () => {
     expect(
       enlacesDelHeader({
         autenticado: true,
@@ -60,7 +64,10 @@ describe("enlacesDelHeader", () => {
         esMesero: false,
         esGerenteGeneral: true,
       }),
-    ).toEqual([{ href: "/dashboard", texto: "Dashboard", destacado: true }]);
+    ).toEqual([
+      { href: "/admin/beneficios/canjes", texto: "Canje de puntos" },
+      { href: "/dashboard", texto: "Dashboard", destacado: true },
+    ]);
   });
 });
 

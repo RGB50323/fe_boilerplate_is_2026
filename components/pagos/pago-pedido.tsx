@@ -5,6 +5,7 @@ import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStor
 import { consultarPago, consultarPagoPedido, procesarPago } from "@/app/actions/pagos";
 import { obtenerPedido } from "@/app/actions/pedidos";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DescargarComprobante } from "@/components/pagos/descargar-comprobante";
 import { TarjetaSimulada, leerTarjetaSimulada } from "@/components/pagos/tarjeta-simulada";
 import { subtotalItem, type PedidoSeguimiento } from "@/lib/seguimiento";
@@ -74,6 +75,8 @@ export function PagoPedido(props: Props) {
   const [monto, setMonto] = useState("");
   const [correoLealtad, setCorreoLealtad] = useState("");
   const montoId = useId();
+  const correoId = useId();
+  const [correo, setCorreo] = useState("");
   const consultaEnCurso = useRef(false);
   const conflicto = useRef(false);
   const [ocupado, setOcupado] = useState(false);
@@ -314,6 +317,18 @@ export function PagoPedido(props: Props) {
       {admitePago && (mostrar || reintento) && (
         <form onSubmit={enviar} className="grid gap-4">
           <fieldset disabled={ocupado || Boolean(reintento)} className="grid gap-4">
+            {tipo === "MESA" && (
+              <label htmlFor={correoId} className="grid gap-1">
+                Correo de lealtad (opcional)
+                <Input id={correoId} type="email" maxLength={254} autoComplete="off"
+                  value={reintento ? reintento.correoLealtad ?? "" : correo}
+                  onChange={(evento) => setCorreo(evento.target.value)}
+                  aria-describedby={`${correoId}-ayuda`} />
+                <span id={`${correoId}-ayuda`} className="text-sm text-zinc-400">
+                  Usa el correo registrado del cliente para atribuir los puntos del pago.
+                </span>
+              </label>
+            )}
             {tipo === "MESA" && (
               <label>
                 Correo del cliente (opcional)

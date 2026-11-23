@@ -7,6 +7,9 @@ export const ROLES_GERENTE = ["GERENTE"] as const;
 export const ROLES_POR_RUTA: Record<string, readonly string[]> = {
   "/cocina": ROLES_COCINA,
   "/mesero/entregas": ROLES_MESERO,
+  "/mesero/canjes": ROLES_MESERO,
+  "/perfil/beneficios": ["CLIENTE"],
+  "/admin/beneficios": ["GERENTE", "GERENTE_GENERAL"],
   "/admin/inventario": ROLES_GERENTE,
 };
 
@@ -59,6 +62,22 @@ export function tieneRolPermitido(
   permitidos: readonly string[],
 ): boolean {
   return obtenerRoles(token).some((rol) => permitidos.includes(rol));
+}
+
+const INICIO_POR_ROL: readonly (readonly [string, string])[] = [
+  ["GERENTE_GENERAL", "/dashboard"],
+  ["GERENTE", "/dashboard"],
+  ["MESERO", "/mesero/pedidos"],
+  ["COCINA", "/cocina"],
+];
+
+export function inicioParaRoles(roles: readonly string[]): string {
+  const inicio = INICIO_POR_ROL.find(([rol]) => roles.includes(rol));
+  return inicio ? inicio[1] : "/menu";
+}
+
+export function inicioDelToken(token: string): string {
+  return inicioParaRoles(obtenerRoles(token));
 }
 
 export function rolesRequeridosPara(
