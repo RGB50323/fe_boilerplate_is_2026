@@ -20,6 +20,7 @@ export function construirTicket(pedido: PedidoParaPago) {
 
 export type SolicitudPago = {
   solicitudId: string;
+  correoLealtad?: string;
   ticket: ReturnType<typeof construirTicket>;
 } & (
   | { metodo: "EFECTIVO"; montoRecibido: string }

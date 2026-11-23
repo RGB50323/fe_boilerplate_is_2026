@@ -72,6 +72,7 @@ export function PagoPedido(props: Props) {
   const [mostrar, setMostrar] = useState(tipo === "MESA");
   const [metodo, setMetodo] = useState<MetodoPago>(tipo === "MESA" ? "EFECTIVO" : "TARJETA");
   const [monto, setMonto] = useState("");
+  const [correoLealtad, setCorreoLealtad] = useState("");
   const montoId = useId();
   const consultaEnCurso = useRef(false);
   const conflicto = useRef(false);
@@ -182,13 +183,16 @@ export function PagoPedido(props: Props) {
     }
 
     await ejecutar(async () => {
+      const correo = tipo === "MESA" ? correoLealtad.trim() : "";
       const solicitud: SolicitudPago = reintento ?? {
         solicitudId: crypto.randomUUID(),
         ticket: construirTicket(pedido),
+        ...(correo ? { correoLealtad: correo } : {}),
         ...(tarjeta?.ok
           ? { metodo: "TARJETA", ...tarjeta.datos }
           : { metodo: "EFECTIVO", montoRecibido: monto }),
       };
+      if (tipo === "MESA") setCorreoLealtad(solicitud.correoLealtad ?? "");
       guardar({ solicitud });
       const respuesta = await procesarPago(solicitud);
       if (!respuesta.ok) {
@@ -198,7 +202,7 @@ export function PagoPedido(props: Props) {
           return;
         }
         if (respuesta.estado === 400 || respuesta.estado === 404) guardar(null);
-        setError(respuesta.error);
+        setError(respuesta.errores?.correoLealtad ?? respuesta.error);
         setSinSesion(Boolean(respuesta.sinSesion));
         return;
       }
@@ -312,6 +316,18 @@ export function PagoPedido(props: Props) {
           <fieldset disabled={ocupado || Boolean(reintento)} className="grid gap-4">
             {tipo === "MESA" && (
               <label>
+                Correo del cliente (opcional)
+                <input
+                  className={campo}
+                  type="email"
+                  maxLength={254}
+                  value={reintento ? reintento.correoLealtad ?? "" : correoLealtad}
+                  onChange={(evento) => setCorreoLealtad(evento.currentTarget.value)}
+                />
+              </label>
+            )}
+            {tipo === "MESA" && (
+              <label>
                 Método de pago
                 <select className={campo} value={metodoActual} onChange={(e) => setMetodo(e.target.value === "EFECTIVO" ? "EFECTIVO" : "TARJETA")}>
                   <option value="EFECTIVO">Efectivo</option>
@@ -363,7 +379,7 @@ export function PagoPedido(props: Props) {
       {consultarPendiente && <p className="text-sm text-zinc-300">Actualizando el estado del pago automáticamente.</p>}
       {comprobanteId != null && <DescargarComprobante id={comprobanteId} />}
       {tipo === "MESA" && estado === "CONFIRMADO" && (
-        <Link href="/menu" className="text-orange-300 underline">Volver al menú principal</Link>
+        <Link href="/mesero/entregas" prefetch={false} className="text-orange-300 underline">Volver a pedidos pendientes de cobro</Link>
       )}
       {(falloInicial || reconciliacionPendiente) && (
         <Button onClick={() => ejecutar(reconciliar)} disabled={ocupado}>Actualizar estado del cobro</Button>
